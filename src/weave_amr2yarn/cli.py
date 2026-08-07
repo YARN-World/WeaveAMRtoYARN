@@ -1,0 +1,216 @@
+"""Command line for AMR to YARN conversion.
+
+    weave convert --amr CORPUS.txt --out DIR [--ud FILE.conllu] [--anchors FILE.json]
+    weave doctor
+    weave strats [--grs PATH]
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from . import __version__
+from .config import ConversionConfig
+from .errors import WeaveError
+from .formats.amr import AmrCorpus
+from .providers.anchors import ChainedAnchorer, LevenshteinAnchorer, PrecomputedAnchorer
+from .providers.ud import ChainedUd, ConlluUd, StanzaUd
+from .resources import bundledGrs
+from .transform.converter import BatchConverter, Converter
+
+
+def _mustExist(path: Path, what: str) -> Path:
+    if not path.exists():
+        raise SystemExit(f"weave: no such {what}: {path}")
+    return path
+
+
+def _buildConverter(args) -> tuple[Converter, list[str]]:
+    """Assemble the converter, plus notes describing what it will use."""
+    config = ConversionConfig(
+        grsPath=Path(args.grs) if args.grs else bundledGrs(),
+        strategy=args.strat,
+        sentenceKey=args.key_snt,
+        timeoutSeconds=args.timeout,
+        penmanDereify=args.penman_dereify,
+    )
+    notes = [f"rules   {config.grsPath}  [{config.strategy}]"]
+
+    parser = StanzaUd(language=args.lang, sentenceKey=args.key_snt)
+    if args.ud:
+        conllu = ConlluUd.fromFile(_mustExist(Path(args.ud), "CoNLL-U file"))
+        ud = conllu if args.strict_ud else ChainedUd(conllu, parser)
+        notes.append(
+            f"ud      {args.ud}  ({len(conllu)} sentences)"
+            + ("" if args.strict_ud else ", Stanza for the rest")
+        )
+    else:
+        ud, conllu = parser, None
+        notes.append(f"ud      Stanza ({args.lang})")
+
+    computed = LevenshteinAnchorer(threshold=args.anchor_threshold)
+    if args.anchors:
+        precomputed = PrecomputedAnchorer.fromFile(
+            _mustExist(Path(args.anchors), "anchor dictionary")
+        )
+        anchors = ChainedAnchorer(precomputed, computed)
+        notes.append(
+            f"anchors {args.anchors}  ({len(precomputed.anchors)} sentences), "
+            "Levenshtein for the rest"
+        )
+    else:
+        anchors = computed
+        notes.append(f"anchors Levenshtein (threshold {args.anchor_threshold})")
+
+    return Converter(config, ud=ud, anchors=anchors), notes
+
+
+def runConvert(args) -> int:
+    corpus = AmrCorpus.fromFile(_mustExist(Path(args.amr), "AMR corpus"))
+
+    converter, notes = _buildConverter(args)
+    for note in notes:
+        print(note, file=sys.stderr)
+
+    duplicates = corpus.duplicateIds()
+    if duplicates:
+        print(
+            f"weave: warning: {len(duplicates)} sentence id(s) used more than once; "
+            f"later blocks overwrite earlier output ({', '.join(duplicates[:5])})",
+            file=sys.stderr,
+        )
+
+    missingUd = missingAnchors = []
+    if args.ud:
+        conllu = converter.ud if isinstance(converter.ud, ConlluUd) else converter.ud.providers[0]
+        missingUd = [s.id for s in corpus if s.id not in conllu]
+    if args.anchors:
+        precomputed = converter.anchors.providers[0]
+        missingAnchors = [s.id for s in corpus if s.id not in precomputed]
+
+    for label, missing, fallback in (
+        ("--ud", missingUd, "Stanza" if not args.strict_ud else "nothing"),
+        ("--anchors", missingAnchors, "Levenshtein"),
+    ):
+        if missing:
+            print(
+                f"weave: warning: {len(missing)} sentence(s) absent from {label}, "
+                f"falling back to {fallback} ({', '.join(missing[:5])}"
+                f"{', ...' if len(missing) > 5 else ''})",
+                file=sys.stderr,
+            )
+
+    print(f"converting {len(corpus)} sentences -> {args.out}", file=sys.stderr)
+    report = BatchConverter(converter).run(
+        corpus, args.out, layout=args.layout, grewOnly=args.grew_only
+    )
+    print(report.summary(), file=sys.stderr)
+    for sentenceId, message in report.failures:
+        print(f"  failed  {sentenceId}: {message}", file=sys.stderr)
+
+    return 1 if report.failures else 0
+
+
+def runDoctor(args) -> int:
+    from .doctor import report
+
+    text, healthy = report(args.lang)
+    print(text)
+    return 0 if healthy else 1
+
+
+def runStrats(args) -> int:
+    from .transform.session import GrsSession
+
+    path = Path(args.grs) if args.grs else bundledGrs()
+    # Any declared strategy is fine here; we only want to read the file.
+    session = GrsSession(path, strategy="main")
+    print(f"{path}\n")
+    print("strategies:")
+    for name in session.strategies():
+        print(f"  {name}")
+    qualified = session.qualifiedStrategies()
+    if qualified:
+        print("\nstrategies inside packages:")
+        for name in qualified:
+            print(f"  {name}")
+    return 0
+
+
+def buildParser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="weave", description=__doc__.split("\n")[0])
+    parser.add_argument("--version", action="version", version=f"weave {__version__}")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    convert = commands.add_parser("convert", help="convert an AMR corpus to YARN")
+    convert.add_argument("--amr", required=True, help="AMR corpus in Penman format")
+    convert.add_argument("--out", required=True, help="output directory")
+    convert.add_argument("--ud", help="CoNLL-U file; Stanza is used without it")
+    convert.add_argument("--anchors", help="anchor dictionary JSON")
+    convert.add_argument("--grs", help="GRS entry file (default: the bundled rules)")
+    convert.add_argument("--strat", default="eval", help="strategy (default: eval)")
+    convert.add_argument(
+        "--key-snt",
+        default="snt",
+        help="metadata key holding the sentence (default: snt)",
+    )
+    convert.add_argument("--lang", default="en", help="parser language (default: en)")
+    convert.add_argument(
+        "--layout",
+        choices=("flat", "grouped"),
+        default="flat",
+        help="grouped puts a.b at a/b.json (default: flat)",
+    )
+    convert.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="per-sentence seconds, 0 to disable (default: 30)",
+    )
+    convert.add_argument(
+        "--anchor-threshold",
+        type=float,
+        default=0.7,
+        help="Levenshtein similarity floor (default: 0.7)",
+    )
+    convert.add_argument(
+        "--grew-only", action="store_true", help="skip the YARN output"
+    )
+    convert.add_argument(
+        "--strict-ud",
+        action="store_true",
+        help="fail sentences missing from --ud instead of parsing them",
+    )
+    convert.add_argument(
+        "--penman-dereify",
+        action="store_true",
+        help="apply the Penman-level -91 dereification before rewriting",
+    )
+    convert.set_defaults(handler=runConvert)
+
+    doctor = commands.add_parser("doctor", help="check the environment")
+    doctor.add_argument("--lang", default="en")
+    doctor.set_defaults(handler=runDoctor)
+
+    strats = commands.add_parser("strats", help="list strategies in a GRS")
+    strats.add_argument("--grs", help="GRS entry file (default: the bundled rules)")
+    strats.set_defaults(handler=runStrats)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = buildParser().parse_args(argv)
+    try:
+        return args.handler(args)
+    except WeaveError as exc:
+        print(f"weave: {exc}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
