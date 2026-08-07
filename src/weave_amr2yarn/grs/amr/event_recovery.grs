@@ -1,0 +1,108 @@
+package event_recovery {
+  % The last chance to produce an event at all.
+  %
+  % Every earlier rule that could mint one has run by now. If none did, the
+  % sentence would leave here with an empty event layer, which is not a valid
+  % YARN graph and scores nothing. Rather than emit that, one event is put on
+  % the AMR root — the node the conversion marked as the focus. The root is
+  % what the sentence is predicating about, so it is the least wrong place to
+  % hang a clause on.
+  %
+  % Two rules, because "an event exists" is weaker than it looks.
+  %
+  % The first covers the plain case: nothing anywhere.
+  %
+  % The second covers a trap. A sentence opening or closing with "and" or
+  % "or" has an implicit conjunct, and the discourse layer gives it an event
+  % up front, attached to nothing but a placeholder. That event is enough to
+  % satisfy the first rule while carrying no content of its own — so on a
+  % verbless question introduced by "and", the first rule stayed quiet and
+  % finalize later swept the empty event away, leaving nothing behind. The
+  % second rule fires exactly when such a placeholder event is all there is
+  % and the focus root is still unlocalized.
+  %
+  % It stays quiet everywhere else. In an ordinary coordination the discourse
+  % layer has consumed the root before this package runs, so no focus node
+  % survives to match; and a root that is only scaffolding, such as a degree
+  % frame, never had a placeholder event in the first place.
+  %
+  % Collapsing the two into one rule is not possible. The obvious gate — "no
+  % event linked to anything that is not a placeholder" — needs an inequality
+  % inside a `without`, and grew accepts that without honouring it: the
+  % clause matches as a pattern but never blocks, and this package then
+  % recovers forever. `without` blocks here stay positive.
+  %
+  % Placement is fixed on both sides: before the skeleton is built, and with
+  % the scoping pair after it, or the new event has no subtree.
+  %
+  % Both rules build a focus slot with a placeholder value pointing back at
+  % the root, mirroring what the skeleton builds for a root that is a bare
+  % concept. That chain earns its keep twice: the focus marking is part of
+  % the expected output, and the edge back to the root is what keeps the new
+  % event attached — without it, an event whose slots all turn out empty is
+  % swept away in finalize and the graph ends up invalid after all.
+  rule fall_back_to_root_event {
+      pattern {
+          node [focus="yes"]
+      }
+      without {
+          event [type="S"]
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "fall_back_to_root_event";
+          event.core = node.var;
+          add_edge event -[link]-> node;
+          add_node focusSlot;
+          focusSlot.feat = "focus";
+          focusSlot.type = "F";
+          add_edge arc: event -> focusSlot;
+          add_node focusValue;
+          focusValue.value = "_";
+          focusValue.type = "L";
+          focusValue.feat = "focus";
+          add_edge arc2: focusSlot -> focusValue;
+          add_edge arc3: focusValue -> node
+      }
+  }
+
+  rule fall_back_to_root_coordination {
+      pattern {
+          node [focus="yes"];
+          node -> node2;
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="_"]
+      }
+      without {
+          event2 [type="S"];
+          event2 -[link]-> node
+      }
+      without {   % the conjunct must itself be unlocalized. Where every child of
+                  % the root already belongs to an event, the coordination has
+                  % real material to work with and this rule stays out of it.
+          event3 [type="S"];
+          event3 -[link]-> node2
+      }
+      commands {
+          add_node event2;
+          event2.event = "__S__";
+          event2.type = "S";
+          event2.src = "fall_back_to_root_coordination";
+          event2.core = node.var;
+          add_edge event2 -[link]-> node;
+          add_node focusSlot;
+          focusSlot.feat = "focus";
+          focusSlot.type = "F";
+          add_edge arc: event2 -> focusSlot;
+          add_node focusValue;
+          focusValue.value = "_";
+          focusValue.type = "L";
+          focusValue.feat = "focus";
+          add_edge arc2: focusSlot -> focusValue;
+          add_edge arc3: focusValue -> node
+      }
+  }
+}

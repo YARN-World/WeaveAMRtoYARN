@@ -1,0 +1,21 @@
+package manner_layer {
+  rule mark_manner {
+      pattern {
+          event [type="S"];
+          predicate [pred];
+          event -[link]-> predicate;
+          arc: predicate -[manner]-> node; 
+          mannerSlot [feat="manner", type="F"];
+          event->mannerSlot
+      }
+      commands {
+          add_node mannerValue;
+          mannerValue.value = "_";
+          mannerValue.type = "L";
+          mannerValue.feat = mannerSlot.feat;
+          add_edge arc2: mannerSlot->mannerValue;
+          add_edge arc3: mannerValue->node;
+          del_edge arc
+      }
+  }
+}

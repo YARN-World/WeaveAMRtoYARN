@@ -1,0 +1,222 @@
+package dereification {
+  % Turning AMR's reified relations back into plain ones.
+  %
+  % AMR can express a relation as a predicate frame ending in -91. Each rule
+  % here undoes one such frame, so everything downstream sees the relational
+  % form and there is a single path through the rest of the rule set rather
+  % than one per frame. AMR in, AMR out; no surface information is read.
+  %
+  % Doing this on the graph rather than on the Penman string is what makes it
+  % work at any depth. Conversion reverses AMR's inverted `:ARGn-of` edges, so
+  % a frame always shows up with its arguments as its own outgoing edges,
+  % whether it sits at the root or three levels down.
+  %
+  % Two families are deliberately absent: the degree and quantity frames,
+  % which the degree layer handles because they need a comparison target,
+  % and the inclusion frame, which becomes a structural relation rather than
+  % an ordinary one.
+
+  rule unfold_be_located_at {
+      pattern { predicate [pred="be-located-at-91"] }
+      commands { predicate.pred = "locate-01" }
+  }
+
+  rule unfold_rate_entity {
+      pattern { predicate [pred="rate-entity-91"] }
+      commands { predicate.pred = "rate-entity" }
+  }
+
+  rule unfold_be_from {
+      pattern { predicate [pred="be-from-91"] }
+      commands { predicate.pred = "originate-01" }
+  }
+
+  rule unfold_have_name {
+      pattern { predicate [pred="have-name-91"] }
+      commands { predicate.pred = "name-01" }
+  }
+
+  rule unfold_correlate {
+      pattern { predicate [pred="correlate-91"] }
+      commands { predicate.pred = "correlate-01" }
+  }
+
+  % A temporal location: the frame becomes a plain time relation.
+  rule unfold_be_temporally_at {
+      pattern {
+          predicate [pred="be-temporally-at-91"];
+          arc: predicate -[ARG1]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      commands {
+          del_edge arc;
+          del_edge arc2;
+          add_edge node -[time]-> node2;
+          del_node predicate
+      }
+  }
+
+  % A modifier, which is a predication and so points the other way.
+  rule unfold_have_mod {
+      pattern {
+          predicate [pred="have-mod-91"];
+          arc: predicate -[ARG1]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      commands {
+          del_edge arc;
+          del_edge arc2;
+          add_edge node2 -[domain]-> node;
+          del_node predicate
+      }
+  }
+
+  % The whole gets a have-03 predicate over the part, rather than a :part-of
+  % edge. Both readings are defensible; this one keeps the possession
+  % explicit, which the layers downstream can act on.
+  rule unfold_have_part {
+      pattern {
+          predicate [pred="have-part-91"];
+          arc: predicate -[ARG1]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      commands {
+          predicate.pred = "have-03";
+          del_edge arc;
+          del_edge arc2;
+          add_edge predicate -[ARG0]-> node;
+          add_edge predicate -[ARG1]-> node2
+      }
+  }
+
+  rule unfold_org_role_with_organization {
+      pattern {
+          predicate [pred="have-org-role-91"];
+          arc: predicate -[ARG0]-> node;
+          arc2: predicate -[ARG2]-> node2;
+          arc3: predicate -[ARG1]-> node3
+      }
+      commands {
+          add_edge node -[role]-> node2;
+          add_edge node2 -[mod]-> node3;
+          del_edge arc; del_edge arc3; del_edge arc2;
+          shift_in predicate ==> node;
+          del_node predicate
+      }
+  }
+
+  rule unfold_org_role_bare {
+      pattern {
+          predicate [pred="have-org-role-91"];
+          arc: predicate -[ARG0]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      without { predicate -[ARG1]-> * }
+      commands {
+          add_edge node -[role]-> node2;
+          del_edge arc; del_edge arc2;
+          shift_in predicate ==> node;
+          del_node predicate
+      }
+  }
+
+  % A kinship or social role. Its first argument is the other party — "X,
+  % U's brother" — so it attaches as a possessor rather than a modifier,
+  % which is what separates it from the organizational role above.
+  rule unfold_kin_role_with_holder {
+      pattern {
+          predicate [pred="have-rel-role-91"];
+          arc: predicate -[ARG0]-> node;
+          arc2: predicate -[ARG2]-> node2;
+          arc3: predicate -[ARG1]-> node3
+      }
+      commands {
+          add_edge node -[role]-> node2;
+          add_edge node2 -[poss]-> node3;
+          del_edge arc; del_edge arc3; del_edge arc2;
+          shift_in predicate ==> node;
+          del_node predicate
+      }
+  }
+
+  rule unfold_kin_role_bare {
+      pattern {
+          predicate [pred="have-rel-role-91"];
+          arc: predicate -[ARG0]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      without { predicate -[ARG1]-> * }
+      commands {
+          add_edge node -[role]-> node2;
+          del_edge arc; del_edge arc2;
+          shift_in predicate ==> node;
+          del_node predicate
+      }
+  }
+
+  % Polarity, which becomes a plain polarity relation.
+  rule unfold_have_polarity {
+      pattern {
+          predicate [pred="have-polarity-91"];
+          arc: predicate -[ARG1]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      commands {
+          add_edge node -[polarity]-> node2;
+          del_edge arc; del_edge arc2;
+          shift_in predicate ==> node;
+          del_node predicate
+      }
+  }
+
+  % Manner, likewise.
+  rule unfold_have_manner {
+      pattern {
+          predicate [pred="have-manner-91"];
+          arc: predicate -[ARG1]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      commands {
+          add_edge node -[manner]-> node2;
+          del_edge arc; del_edge arc2;
+          shift_in predicate ==> node;
+          del_node predicate
+      }
+  }
+
+  rule unfold_instead_of {
+      pattern {
+          predicate [pred="instead-of-91"];
+          arc: predicate -[ARG1]-> node;
+          arc2: predicate -[ARG2]-> node2
+      }
+      commands {
+          predicate.pred = "prefer-01"
+      }
+  }
+
+  % Collapse what the two role rules above leave behind.
+  %
+  % They produce an anonymous person holding a role, with the organization or
+  % counterparty already hanging off the role. Where the person has no name
+  % of its own, that extra node says nothing: the role concept is the
+  % participant. So the holder takes the role's concept and its edges, and the
+  % role node goes.
+  %
+  % A named person keeps the structure — "John, the chairman" is two things,
+  % not one.
+  rule collapse_role_chain {
+      pattern {
+          conceptNode [concept="person"];
+          arc: conceptNode -[role]-> conceptNode2;
+          conceptNode2 [concept]
+      }
+      without { conceptNode -[name]-> node }
+      commands {
+          conceptNode.concept = conceptNode2.concept;
+          del_edge arc;
+          shift conceptNode2 ==> conceptNode;
+          del_node conceptNode2
+      }
+  }
+}

@@ -1,0 +1,79 @@
+package direction {
+  rule mark_direction_with_unit {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[direction]-> node;
+          node -[op1]->node2;
+          dirSlot [feat="dir", type="F"];
+          event -> dirSlot
+      }
+      without {
+          node -[op2]->*
+      }
+      commands {
+          add_node dirValue;
+          dirValue.value = node.concept;
+          dirValue.type = "L";
+          dirValue.feat = dirSlot.feat;
+          add_edge arc: dirSlot->dirValue;
+          add_edge arc2: dirValue->node2;
+          del_node node
+      }
+  }
+
+  rule mark_direction_bare {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          arc: predicate -[direction]-> node;
+          node -[anchor]-> node2;
+          dirSlot [feat="dir", type="F"];
+          event -> dirSlot
+      }
+      without {
+          node -[op1]->*
+      }
+      without {
+          node2 -[case]-> token;
+          token [upos="ADP"];
+      }
+      commands {
+          add_node dirValue;
+          dirValue.value = "_";
+          dirValue.type = "L";
+          dirValue.feat = dirSlot.feat;
+          add_edge arc2: dirSlot->dirValue;
+          add_edge arc3: dirValue->node;
+          del_edge arc
+      }
+  }
+
+  rule mark_direction_adposition {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          arc: predicate -[direction]-> node;
+          node -[anchor]-> node2;
+          node2 -[case]-> token;
+          token [upos="ADP"];
+          dirSlot [feat="dir", type="F"];
+          event -> dirSlot
+      }
+      without {
+          node -[op1]->*
+      }
+      commands {
+          add_node dirValue;
+          dirValue.value = token.lemma;
+          dirValue.type = "L";
+          dirValue.feat = dirSlot.feat;
+          add_edge arc2: dirSlot->dirValue;
+          add_edge arc3: dirValue->node;
+          del_edge arc
+      }
+  }
+}

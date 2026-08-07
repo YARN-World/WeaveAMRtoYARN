@@ -1,0 +1,26 @@
+package clause_links {
+  rule route_clause_edges {
+      pattern {
+          event [type="S"];
+          event2 [type="S"];
+          amrNode [type="V"];
+          amrNode2 [type="V"];
+          event-[link]->amrNode;
+          event2-[link]->amrNode2;
+          arc:amrNode->amrNode2
+      }
+      without {
+          amrNode3 [type="V"];
+          event2-[link]->amrNode3;
+          amrNode3 -> amrNode2
+      }
+      commands {
+          add_node clauseNode;
+          clauseNode.rel = arc.1;
+          clauseNode.type = "C";
+          add_edge arc2: amrNode->clauseNode;
+          add_edge arc3: clauseNode->event2;
+          del_edge arc
+      }
+  }
+}

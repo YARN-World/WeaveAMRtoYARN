@@ -1,0 +1,45 @@
+package hyperedges {
+  rule route_modal_tense {
+      pattern {
+          event [type="S"];
+          tempSlot [feat="temp", type="F"];
+          modalSlot [feat="modal", type="F"];
+          tempValue [feat="temp", type="L"];
+          modalValue [feat="modal", type="L"];
+          node [];
+          event->tempSlot;
+          tempSlot->tempValue;
+          arc:tempValue->node;
+          event->modalSlot;
+          modalSlot->modalValue;
+          modalValue->node
+      }
+      commands {
+          add_edge arc2:tempValue->modalValue;
+          tempValue.type = "H";
+          del_edge arc
+      }
+  }
+
+  rule route_modal_aspect {
+      pattern {
+          event [type="S"];
+          aspectSlot [feat="aspect", type="F"];
+          modalSlot [feat="modal", type="F"];
+          aspectValue [feat="aspect", type="L"];
+          modalValue [feat="modal", type="L"];
+          node [];
+          event->aspectSlot;
+          aspectSlot->aspectValue;
+          arc:aspectValue->node;
+          event->modalSlot;
+          modalSlot->modalValue;
+          modalValue->node
+      }
+      commands {
+          add_edge arc2:aspectValue->modalValue;
+          aspectValue.type = "H";
+          del_edge arc
+      }
+  }
+}

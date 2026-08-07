@@ -1,0 +1,22 @@
+package mood {
+  rule mark_mood {
+      pattern {
+          event [type="S"];
+          predicate [pred];
+          event -[link]-> predicate;
+          predicate -[mode]-> conceptNode;
+          conceptNode [concept="imperative"];
+          moodSlot [feat="mood", type="F"];
+          event->moodSlot
+      }
+      commands {
+          add_node moodValue;
+          moodValue.value="imperative";
+          moodValue.type="L";
+          moodValue.feat = moodSlot.feat;
+          add_edge arc:moodSlot->moodValue;
+          add_edge arc2:moodValue->predicate;
+          del_node conceptNode
+      }
+  }
+}

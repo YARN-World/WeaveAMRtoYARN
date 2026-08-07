@@ -1,0 +1,21 @@
+package frequency {
+  rule mark_frequency {
+      pattern {
+          event [type="S"];
+          freqSlot [feat="freq", type="F"];
+          event->freqSlot;
+          predicate [pred];
+          event -[link]-> predicate;
+          arc:predicate -[frequency]-> node
+      }
+      commands {
+          add_node freqValue;
+          freqValue.value="_";
+          freqValue.type="L";
+          freqValue.feat=freqSlot.feat;
+          add_edge arc2:freqSlot->freqValue;
+          add_edge arc3:freqValue->node;
+          del_edge arc
+      }
+  }
+}

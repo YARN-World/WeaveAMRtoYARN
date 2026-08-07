@@ -1,0 +1,67 @@
+package negation {
+  rule mark_negation {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[polarity]-> conceptNode;
+          conceptNode [concept="-"];
+          negSlot [feat="neg", type="F"];
+          event->negSlot
+      }
+      without {
+          negValue [value="_", type="L"];
+          negSlot->negValue;
+          negValue->node
+      }
+      without {
+          node2 [feat="quant"];
+          node2->node
+      }
+      commands {
+          add_node negValue;
+          negValue.value = "_";
+          negValue.type = "L";
+          negValue.feat = "neg";
+          add_edge arc:negSlot->negValue;
+          add_edge arc2:negValue->node;
+          del_node conceptNode
+      }
+  }
+
+  % Negating something quantified: "no dog", "nothing".
+  %
+  % Where a quantifier has already been built over the node, the negation
+  % belongs over the quantifier and not over the node — "not every" rather
+  % than "every not". So the hyperedge points at the quantifier instead.
+  %
+  % This is why the package runs after quantification: there would otherwise
+  % be nothing to point at.
+  rule mark_negated_quantifier {
+      pattern {
+          event [type="S"];
+          node -[polarity]-> conceptNode;
+          conceptNode [concept="-"];
+          quantSlot [feat="quant", type="F"];
+          event->quantSlot;
+          node2 [feat="quant"];
+          quantSlot->node2;
+          node2->node;
+          negSlot [feat="neg", type="F"];
+          event->negSlot
+      }
+      without {
+          hyperedge [feat="neg"];
+          negSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "_";
+          hyperedge.type = "H";
+          hyperedge.feat = "neg";
+          add_edge arc:negSlot->hyperedge;
+          add_edge arc2:hyperedge->node2;
+          del_node conceptNode
+      }
+  }
+}

@@ -1,0 +1,188 @@
+package modal_verbs {
+  rule localize_possibility_verb {
+      pattern {
+          predicate [pred="possible-01"|"recommend-01"];
+          predicate -[ARG1]->node;
+          event [type="S"];
+          event-[link]->node
+      }
+      without {
+          *-[link]->predicate
+      }
+      commands {
+          add_edge event -[link]-> predicate
+      }
+  }
+
+  rule reattach_possibility_verb {
+      pattern {
+          predicate [pred="possible-01"|"recommend-01"];
+          predicate -[ARG1]->node;
+          event [type="S"];
+          event2 [type="S"];
+          arc:event-[link]->predicate;
+          event2-[link]->node;
+        
+      }
+      commands {
+          del_edge arc;
+          add_edge event2-[link]->predicate
+      }
+  }
+
+  rule localize_permission_verb {
+      pattern {
+          predicate [pred="permit-01"];
+          predicate -[ARG1]->node;
+          event [type="S"];
+          event-[link]->node
+      }
+      without {
+          *-[link]->predicate
+      }
+      commands {
+          add_edge event -[link]-> predicate
+      }
+  }
+
+  rule reattach_permission_verb {
+      pattern {
+          predicate [pred="permit-01"];
+          predicate -[ARG1]->node;
+          event [type="S"];
+          event2 [type="S"];
+          arc:event-[link]->predicate;
+          event2-[link]->node;
+      }
+      commands {
+          del_edge arc;
+          add_edge event2-[link]->predicate
+      }
+  }
+
+  rule anchor_permission_verb {
+      pattern {
+          token [upos="AUX", lemma="can"|"could"|"may"|"might"];
+          node -[aux]-> token;
+          node2 -[anchor]-> node;
+          predicate [pred="permit-01"];
+          predicate -[ARG1]-> node2
+      }
+      without {
+          *-[anchor]->token
+      }
+      without {
+          *-[anchor]->predicate
+      }
+      commands {
+          add_edge predicate-[anchor]->token
+      }
+  }
+
+  rule localize_obligation_verb {
+      pattern {
+          predicate [pred="obligate-01"];
+          predicate -[ARG2]->node;
+          event [type="S"];
+          event-[link]->node
+      }
+      without {
+          *-[link]->predicate
+      }
+      commands {
+          add_edge event-[link]->predicate
+      }
+  }
+
+  rule reattach_obligation_verb {
+      pattern {
+          predicate [pred="obligate-01"];
+          predicate -[ARG2]->node;
+          event [type="S"];
+          event2 [type="S"];
+          arc:event-[link]->predicate;
+          event2-[link]->node;
+        
+      }
+      commands {
+          del_edge arc;
+          add_edge event2-[link]->predicate
+      }
+  }
+
+  rule anchor_possibility_verb{
+      pattern {
+          token [upos="AUX", lemma="can"|"could"|"may"|"might"];
+          node -[aux]-> token;
+          node2 -[anchor]-> node;
+          predicate [pred="possible-01"];
+          predicate -[ARG1]-> node2
+      }
+      without {
+          *-[anchor]->token
+      }
+      without {
+          *-[anchor]->predicate
+      }
+      commands {
+          add_edge predicate-[anchor]->token
+      }
+  }
+
+  rule anchor_advisability_verb{
+      pattern {
+          token [upos="AUX", lemma="should"|"ought"];
+          node -[aux]-> token;
+          node2 -[anchor]-> node;
+          predicate [pred="recommend-01"];
+          predicate -[ARG1]-> node2
+      }
+      without {
+          *-[anchor]->token
+      }
+      without {
+          *-[anchor]->predicate
+      }
+      commands {
+          add_edge predicate-[anchor]->token
+      }
+  }
+
+  rule anchor_obligation_must{
+      pattern {
+          token [upos="AUX", lemma="must"];
+          node -[aux]-> token;
+          node2 -[anchor]-> node;
+          predicate [pred="obligate-01"];
+          predicate -[ARG2]-> node2
+      }
+      without {
+          *-[anchor]->token
+      }
+      without {
+          *-[anchor]->predicate
+      }
+      commands {
+          add_edge predicate-[anchor]->token
+      }
+  }
+
+  rule anchor_obligation_verb{
+      pattern {
+          token [upos="VERB", lemma="have"|"need"];
+          node -[xcomp]-> token;
+          node2 -[anchor]-> node;
+          predicate [pred="obligate-01"];
+          predicate -[ARG2]-> node2
+      }
+      without {
+          *-[anchor]->token
+      }
+      without {
+          *-[anchor]->predicate
+      }
+      commands {
+          add_edge predicate-[anchor]->token
+      }
+  }
+}

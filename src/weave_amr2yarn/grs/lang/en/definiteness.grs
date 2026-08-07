@@ -1,0 +1,328 @@
+package definiteness {
+  rule mark_definite_universal {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="every"|"each"];
+          defSlot [feat = "def", type = "F"];
+          event -> defSlot
+      }
+      without {
+          defValue [feat="def", type="L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "definite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  rule mark_definite_determiner {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]-> token;
+          token [upos = "NOUN"|"PROPN"];
+          token -[det]-> token2;
+          token2 [Definite = "Def", PronType = "Art"]|[PronType="Dem"];
+          defSlot [feat = "def", type = "F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          defValue [feat="def", type = "L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "definite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  rule mark_definite_demonstrative {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="this"|"that"|"these"|"those"];
+          defSlot [feat = "def", type = "F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          defValue [feat="def", type = "L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "definite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  rule mark_definite_possessive_ud {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]-> token;
+          token [upos = "NOUN"|"PROPN"];
+          token -[nmod:poss]-> token2;
+          token2 [upos="PRON", PronType="Prs", Poss="Yes"];
+          defSlot [feat = "def", type = "F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          defValue [feat="def", type = "L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "definite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  rule mark_definite_possessive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[poss]-> node2;
+          defSlot [feat = "def", type = "F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          defValue [feat="def", type = "L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "definite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  % A name on its own is definite: "Mary won."
+  %
+  % Number is what separates this from a bare plural proper noun, which is a
+  % kind rather than an individual and is handled further down. A proper noun
+  % that does carry a determiner goes through the ordinary determiner rules,
+  % so any determiner here rules this one out.
+  rule mark_definite_proper {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]-> token;
+          token [upos="PROPN", Number="Sing"];
+          defSlot [feat = "def", type = "F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          token -[det]-> *
+      }
+      without {
+          defValue [feat="def", type = "L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "definite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  rule mark_indefinite {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos = "NOUN"|"PROPN"];
+          token -[det]-> token2;
+          token2 [Definite = "Ind", PronType = "Art"];
+          defSlot [feat = "def", type = "F"];
+          event->defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          defValue [feat="def", type = "L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "indefinite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  % Everything else with no cue at all: bare plurals, bare mass nouns, and
+  % nouns modified by a vague quantifier.
+  %
+  % The guards below spell out every signal that would have made the phrase
+  % definite, or indefinite by a more specific route. The last of them checks
+  % for a value that is already there, so any rule added later takes
+  % precedence over this one simply by running before it.
+  rule mark_indefinite_default {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]-> token;
+          token [upos="NOUN"];
+          defSlot [feat="def", type="F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          token -[det]-> token2;
+          token2 [Definite="Def", PronType="Art"]
+      }
+      without {
+          token -[det]-> token2;
+          token2 [PronType="Dem"]
+      }
+      without {
+          token -[nmod:poss]-> *
+      }
+      without {
+          node -[poss]-> *
+      }
+      without {
+          node -[mod]-> conceptNode;
+          conceptNode [concept="every"|"each"]
+      }
+      without {
+          defValue [feat="def", type="L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "indefinite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  % A bare plural proper noun names a kind, not an individual: "Italians won."
+  %
+  % Parsers tag demonyms as proper nouns, so the bare-plural rule above never
+  % sees them. This is that rule for the proper-noun case. The singular, which
+  % is a name, went the other way further up; number is the whole split.
+  rule mark_indefinite_proper {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]-> token;
+          token [upos="PROPN", Number="Plur"];
+          defSlot [feat="def", type="F"];
+          event -> defSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          token -[det]-> *
+      }
+      without {
+          defValue [feat="def", type="L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "indefinite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+
+  rule mark_indefinite_all {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="all"];
+          node -[anchor]-> token;
+          token [upos="NOUN"|"PROPN"];
+          defSlot [feat="def", type="F"];
+          event -> defSlot
+      }
+      without {
+          token -[det]-> token2;
+          token2 [Definite="Def", PronType="Art"]
+      }
+      without {
+          token -[det]-> token2;
+          token2 [PronType="Dem"]
+      }
+      without {
+          defValue [feat="def", type="L"];
+          defSlot->defValue;
+          defValue->node
+      }
+      commands {
+          add_node defValue;
+          defValue.value = "indefinite";
+          defValue.type = "L";
+          defValue.feat = defSlot.feat;
+          add_edge arc:defSlot->defValue;
+          add_edge arc2:defValue->node
+      }
+  }
+}

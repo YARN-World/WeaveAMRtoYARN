@@ -1,0 +1,56 @@
+package focus {
+  rule mark_focus_eventless {
+      pattern {
+          conceptNode [concept];
+          focusSlot [feat="focus", type="F"];
+          event [event="S1", type="S"];
+          event->focusSlot
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          focusValue [value = "_", type="L"];
+          focusSlot->focusValue;
+          focusValue->conceptNode
+      }
+      commands {
+          add_node focusValue;
+          focusValue.value = "_";
+          focusValue.type = "L";
+          focusValue.feat = focusSlot.feat;
+          add_edge arc:focusSlot->focusValue;
+          add_edge arc2:focusValue->conceptNode
+      }
+  }
+
+  rule mark_focus_domain {
+      pattern {
+          event [type="S"];
+          focusSlot [feat="focus", type="F"];
+          event->focusSlot;
+          conceptNode [concept];
+          event -[link]-> conceptNode;
+          relation [rel="domain", type="E"];
+          conceptNode->relation
+      }
+      without {
+          amrNode [type="V"];
+          amrNode->conceptNode
+      }
+      without {
+          focusValue [feat="focus", type="L"];
+          focusValue->conceptNode
+      }
+      commands {
+          add_node focusValue;
+          focusValue.value = "_";
+          focusValue.type = "L";
+          focusValue.feat = focusSlot.feat;
+          add_edge arc:focusSlot->focusValue;
+          add_edge arc2:focusValue->conceptNode
+      }
+  }
+
+
+}

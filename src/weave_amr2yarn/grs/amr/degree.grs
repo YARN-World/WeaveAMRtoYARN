@@ -1,0 +1,427 @@
+package degree {
+  rule grade_concept_by_arg2 {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> conceptNode;
+          conceptNode [concept]; % the graded property is a bare concept
+          predicate -[ARG2]-> node;
+          event -[link]-> node;
+          predicate -[ARG3]-> node2;
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = node2.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;
+          add_edge arc2: degreeValue->node;
+          add_edge conceptNode -[mod]-> node; % a bare concept modifies rather than predicates
+          shift_in predicate ==> conceptNode;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node node2
+      }
+  }
+
+  rule grade_concept_by_arg1 {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> predicate2;
+          predicate2 [!pred]; % the graded property is a bare concept
+          predicate -[ARG2]-> node;
+          event -[link]-> predicate2;
+          predicate -[ARG3]-> node2;
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = node2.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;
+          add_edge arc2: degreeValue->node;
+          add_edge predicate2 -[mod]-> node; % a bare concept modifies rather than predicates
+          shift_in predicate ==> predicate2;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node node2
+      }
+  }
+
+  rule grade_predicate {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> predicate2;
+          predicate2 [pred]; % the graded property is a predicate
+          predicate -[ARG2]-> node;
+          event -[link]-> node;
+          predicate -[ARG3]-> node2;
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = node2.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;
+          add_edge arc2: degreeValue->node;
+          shift_in predicate ==> predicate2;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node node2
+      }
+  }
+
+  rule grade_comparative_concepts {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> conceptNode;
+          conceptNode [concept];
+          predicate -[ARG2]-> conceptNode2;
+          conceptNode2 [concept];
+          event -[link]-> conceptNode2;
+          predicate -[ARG3]-> conceptNode3;
+          predicate -[ARG4]-> node
+      }
+      without { conceptNode3 [concept="equal"] }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = conceptNode3.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;        % the degree slot owns the value
+          add_edge arc2: degreeValue->conceptNode2;             % the value points at the property
+          add_edge conceptNode2 -[domain]-> conceptNode;       % the property is predicated of the subject
+          % the property is stated twice, once per side of the comparison
+          add_node node2;
+          node2.concept = conceptNode2.concept;
+          node2.type = conceptNode2.type;
+          add_node relation;                    % built by hand: the copy has no variable, so nothing else will build it
+          relation.rel = "domain";
+          relation.type = "E";
+          add_edge arc3: node2->relation;
+          add_edge arc4: relation->node;         % the copy is predicated of the standard
+          add_node hyperedge;
+          hyperedge.value = "than";
+          hyperedge.type = "H";                  % a value cannot point straight at a node; a hyperedge carries it
+          hyperedge.feat = degreeSlot.feat;
+          add_edge degreeValue -[degree_src]-> hyperedge;  % the hyperedge hangs off the degree value
+          add_edge arc5: hyperedge->node2;            % and points at the copy, not the node itself
+          shift_in predicate ==> conceptNode;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node conceptNode3
+      }
+  }
+
+  rule grade_equative_concepts {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> conceptNode;
+          conceptNode [concept];
+          predicate -[ARG2]-> conceptNode2;
+          conceptNode2 [concept];
+          event -[link]-> conceptNode2;
+          predicate -[ARG3]-> conceptNode3;
+          conceptNode3 [concept="equal"];
+          predicate -[ARG4]-> node
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = conceptNode3.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;        % the degree slot owns the value
+          add_edge arc2: degreeValue->conceptNode2;             % the value points at the property
+          add_edge conceptNode2 -[domain]-> conceptNode;       % the property is predicated of the subject
+          % the property is stated twice, once per side of the comparison
+          add_node node2;
+          node2.concept = conceptNode2.concept;
+          node2.type = conceptNode2.type;
+          add_node relation;
+          relation.rel = "domain";
+          relation.type = "E";
+          add_edge arc3: node2->relation;
+          add_edge arc4: relation->node;         % the copy is predicated of the standard
+          add_node hyperedge;
+          hyperedge.value = "";                  % an equative has no comparison word to carry
+          hyperedge.type = "H";
+          hyperedge.feat = degreeSlot.feat;
+          add_edge degreeValue -[degree_src]-> hyperedge;
+          add_edge arc5: hyperedge->node2;            % and points at the copy, not the node itself
+          shift_in predicate ==> conceptNode;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node conceptNode3
+      }
+  }
+
+  % A comparison with no property at all: "football is more than hockey".
+  %
+  % The frame names the two sides and the comparison, and nothing else. The
+  % event was built over the comparison word itself, since that is what
+  % carries the copula, so that node cannot simply be deleted — the event and
+  % its tense hang off it. Instead its concept is captured as the degree
+  % value and then blanked, leaving it as the empty property that both sides
+  % are predicated of.
+  rule grade_comparative_bare {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> node;
+          predicate -[ARG3]-> conceptNode;
+          event -[link]-> conceptNode;
+          predicate -[ARG4]-> node2
+      }
+      without { predicate -[ARG2]-> node3 }
+      without { conceptNode [concept="equal"] }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = conceptNode.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;
+          add_edge arc2: degreeValue->conceptNode;             % the value points at what is about to be emptied
+          conceptNode.concept = "_";                % the node itself becomes the empty property
+          add_edge conceptNode -[domain]-> node;       % the empty property is predicated of the subject
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_node relation;                    % built by hand: the copy has no variable
+          relation.rel = "domain";
+          relation.type = "E";
+          add_edge arc3: amrNode->relation;
+          add_edge arc4: relation->node2;         % the copy is predicated of the standard
+          add_node hyperedge;
+          hyperedge.value = "than";
+          hyperedge.type = "H";
+          hyperedge.feat = degreeSlot.feat;
+          add_edge degreeValue -[degree_src]-> hyperedge;
+          add_edge arc5: hyperedge->amrNode;
+          shift_in predicate ==> node2;             % here the standard of comparison is the subject
+          del_node predicate
+      }
+  }
+
+  rule grade_comparative_predicate {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> node;
+          predicate -[ARG2]-> predicate2;
+          predicate2 [pred];
+          event -[link]-> predicate2;
+          predicate -[ARG3]-> conceptNode;
+          predicate -[ARG4]-> node2
+      }
+      without { conceptNode [concept="equal"] }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = conceptNode.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;        % the degree slot owns the value
+          add_edge arc2: degreeValue->predicate2;             % the value points at the property
+          add_edge predicate2 -[ARG1]-> node;         % the property predicates of the subject
+          % the property is stated twice, once per side of the comparison
+          add_node node3;
+          node3.pred = predicate2.pred;
+          node3.type = predicate2.type;
+          add_node relation;                    % built by hand: the copy has no variable, so nothing else will build it
+          relation.rel = "ARG1";
+          relation.type = "E";
+          add_edge arc3: node3->relation;
+          add_edge arc4: relation->node2;          % the copy is predicated of the standard
+          add_node hyperedge;
+          hyperedge.value = "than";
+          hyperedge.type = "H";                  % a value cannot point straight at a node; a hyperedge carries it
+          hyperedge.feat = degreeSlot.feat;
+          add_edge degreeValue -[degree_src]-> hyperedge;  % the hyperedge hangs off the degree value
+          add_edge arc5: hyperedge->node3;            % and points at the copy, not the node itself
+          shift_in predicate ==> node;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node conceptNode
+      }
+  }
+
+  rule grade_equative_predicate {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> node;
+          predicate -[ARG2]-> predicate2;
+          predicate2 [pred];
+          event -[link]-> predicate2;
+          predicate -[ARG3]-> conceptNode;
+          conceptNode [concept="equal"];
+          predicate -[ARG4]-> node2
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = conceptNode.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;        % the degree slot owns the value
+          add_edge arc2: degreeValue->predicate2;             % the value points at the property
+          add_edge predicate2 -[ARG1]-> node;         % the property predicates of the subject
+          add_node node3;
+          node3.pred = predicate2.pred;
+          node3.type = predicate2.type;
+          add_node relation;
+          relation.rel = "ARG1";
+          relation.type = "E";
+          add_edge arc3: node3->relation;
+          add_edge arc4: relation->node2;          % the copy is predicated of the standard
+          add_node hyperedge;
+          hyperedge.value = "";                  % an equative has no comparison word to carry
+          hyperedge.type = "H";
+          hyperedge.feat = degreeSlot.feat;
+          add_edge degreeValue -[degree_src]-> hyperedge;
+          add_edge arc5: hyperedge->node3;            % and points at the copy
+          shift_in predicate ==> node;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node conceptNode
+      }
+  }
+
+  rule grade_superlative_concepts {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> conceptNode;
+          conceptNode [concept]; % the graded property is a bare concept
+          predicate -[ARG2]-> conceptNode2;
+          conceptNode2 [concept];
+          event -[link]-> conceptNode2;
+          predicate -[ARG3]-> node;
+          predicate -[ARG5]-> node2;
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = node.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;
+          add_edge arc2: degreeValue->conceptNode2;
+          add_node degreeValue2;
+          degreeValue2.value = "in/among/of";
+          degreeValue2.type = "L";
+          degreeValue2.feat = degreeSlot.feat;
+          add_edge arc3: degreeSlot->degreeValue2;
+          add_edge arc4: degreeValue2->node2;
+          add_edge conceptNode -[mod]-> conceptNode2; % a bare concept modifies rather than predicates
+          shift_in predicate ==> conceptNode;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node node
+      }
+  }
+
+  rule grade_superlative_predicate {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred="have-degree-91"];
+          predicate -[ARG1]-> node;
+          predicate -[ARG2]-> predicate2;
+          predicate2 [pred];
+          event -[link]-> predicate2;
+          predicate -[ARG3]-> node2;
+          predicate -[ARG5]-> node3;
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = node2.concept;
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc: degreeSlot->degreeValue;
+          add_edge arc2: degreeValue->predicate2;
+          add_node degreeValue2;
+          degreeValue2.value = "in/among/of";
+          degreeValue2.type = "L";
+          degreeValue2.feat = degreeSlot.feat;
+          add_edge arc3: degreeSlot->degreeValue2;
+          add_edge arc4: degreeValue2->node3;
+          shift_in predicate ==> node;             % everything pointing at the frame — event links,
+                                          % embedding edges — moves to the subject, which is
+                                          % what the sentence is actually about
+          del_node predicate;
+          del_node node2
+      }
+  }
+
+  %rule grade_plain_concept {
+  %    pattern {
+  %        event [type="S"];
+  %        degreeSlot [feat="degree", type="F"];
+  %        event -> degreeSlot;
+  %        predicate [pred];
+  %        event -[link]-> predicate;
+  %        predicate -[degree]-> conceptNode;
+  %        conceptNode [concept]
+  %    }
+  %    commands {
+  %        add_node degreeValue;
+  %        degreeValue.value = conceptNode.concept;
+  %        degreeValue.type = "L";
+  %        degreeValue.feat = degreeSlot.feat;
+  %        add_edge arc: degreeSlot -> degreeValue;
+  %        add_edge arc2: degreeValue -> predicate;
+  %        del_node conceptNode
+  %    }
+  %}
+
+  rule grade_plain_predicate {
+      pattern {
+          event [type="S"];
+          degreeSlot [feat="degree", type="F"];
+          event->degreeSlot;
+          predicate [pred];
+          event -[link]-> predicate;
+          arc:predicate -[degree]->predicate2;
+          predicate2 [pred]
+      }
+      commands {
+          add_node degreeValue;
+          degreeValue.value = "_";
+          degreeValue.type = "L";
+          degreeValue.feat = degreeSlot.feat;
+          add_edge arc2: degreeSlot->degreeValue;
+          add_edge arc3: degreeValue->predicate2;
+          del_edge arc
+      }
+
+  }
+}

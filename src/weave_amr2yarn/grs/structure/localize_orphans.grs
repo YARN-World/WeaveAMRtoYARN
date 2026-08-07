@@ -1,0 +1,67 @@
+package localize_orphans {
+  % Scope by looking down instead of up, for the nodes the pair cannot reach.
+  %
+  % localize_core and localize_events both travel outward from an event along its
+  % outgoing edges. An inverted relation puts a node on the wrong side of
+  % that: penman turns `lake :ARG1-of resemble-01` into
+  % resemble-01 -[ARG1]-> lake, so resemble-01 and everything hanging off it
+  % sit above the localized subtree and are never reached — which also costs
+  % them their definiteness, number and quantification layers.
+  %
+  % This pass runs afterwards and reads the other direction: a node with no
+  % event of its own, whose localized children all name the same event, joins
+  % that event. If one of its other children belongs to a different event
+  % the situation is ambiguous, and nothing is guessed.
+  %
+  % The three guards lean on grew's injectivity — every variable in a
+  % request, `without` blocks included, binds a distinct node:
+  %
+  %   * "already localized" needs two guards, not one. The first reuses the
+  %     matched event; the second introduces a fresh one. A single guard with
+  %     a fresh variable can never bind it to the event already in the
+  %     pattern, and the rule spins until the engine's step limit stops it.
+  %   * The conflict guard gets its two inequalities for free: the second
+  %     child and the second event are distinct from the first simply because
+  %     they are named differently.
+  %
+  % `<>` would read better but is silently ignored inside a `without`, so
+  % injectivity is the only encoding of these that actually holds.
+  %
+  % Variable names here are deliberate. The engine matches a rule's nodes in
+  % the alphabetical order of their identifiers, and this rule has competing
+  % matches that knock each other out, so the names fix which one wins.
+  %
+  % The scoping pair runs again immediately after this, which is what gives
+  % an adopted node's own subtree its event. Onf repeats the adoption, so
+  % chains of inverted relations unwind one step at a time.
+
+  rule localize_by_child {
+      pattern {
+          orphan [type="V", !id];
+          orphan -> orphanChild;
+          orphanChild [type="V"|"E"];
+          event [type="S"];
+          event -[link]-> orphanChild
+      }
+      % already localized to this event
+      without {
+          event -[link]-> orphan
+      }
+      % already localized to some other event
+      without {
+          rival [type="S"];
+          rival -[link]-> orphan
+      }
+      % another child belongs elsewhere: ambiguous, so leave it alone
+      without {
+          orphan -> rivalTarget;
+          rivalTarget [type="V"|"E"];
+          rivalEvent [type="S"];
+          rivalEvent -[link]-> rivalTarget
+      }
+      commands {
+          add_edge event -[link]-> orphan;
+          orphan.nonref = "yes"
+      }
+  }
+}

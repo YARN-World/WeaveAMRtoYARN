@@ -1,0 +1,401 @@
+package number {
+  rule mark_singular_quantified {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[mod]-> conceptNode;
+          conceptNode [concept="every"|"each"];
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "singular";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_singular_article {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN"|"PROPN", Number="Sing"];
+          token -[det]->token2;
+          token2 [Definite="Ind", PronType="Art"];
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "singular";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_singular_numeral {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN"|"PROPN", Number="Sing"];
+          token -[nummod]->token2;
+          token2 [lemma="one"|"1"];
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          numValue [feat="num", type="L"]; 
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "singular";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_singular_proper {
+    pattern {
+        event [type="S"];
+        event -[link]-> node;
+        node [!nonref];
+        node -[anchor]->token;
+        token [upos="PROPN", Number="Sing"];
+        numSlot [feat = "num", type = "F"];
+        event->numSlot
+    }
+    without {
+        *-[mod]->node
+    }
+    without {
+        node -[mod]-> conceptNode;
+        conceptNode [concept="every"|"each"]
+    }
+    without {
+        numValue [feat="num", type="L"];
+        numSlot->numValue;
+        numValue->node
+    }
+    commands {
+        add_node numValue;
+        numValue.value = "singular";
+        numValue.type = "L";
+        numValue.feat = numSlot.feat;
+        add_edge arc:numSlot->numValue;
+        add_edge arc2:numValue->node
+    }
+  }
+
+  rule mark_singular_pronoun {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="i"|"he"|"she"|"it"|"this"|"that", !nonref];
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      without {
+          *-[mod]->conceptNode
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->conceptNode
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "singular";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->conceptNode
+      }
+  }
+
+  rule mark_plural {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN"|"PROPN", Number="Plur"];
+          numSlot [feat = "num", type = "F"];
+          event -> numSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "plural";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_plural_pronoun {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="we"|"they"|"these"|"those", !nonref];
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      without {
+          *-[mod]->conceptNode
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->conceptNode
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "plural";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->conceptNode
+      }
+  }
+
+  rule mark_ambiguous_pronoun {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="you", !nonref];
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      without {
+          *-[mod]->conceptNode
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->conceptNode
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "singular,plural";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->conceptNode
+      }
+  }
+
+  rule mark_pluralia_tantum {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN", Number="Ptan"];
+          numSlot [feat = "num", type = "F"];
+          event -> numSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "mass";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_mass_bare {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN", Number="Sing"];
+          numSlot [feat = "num", type = "F"];
+          event -> numSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          token-[det]->*
+      }
+      without {
+          node -[mod]-> conceptNode;
+          conceptNode [concept="every"|"each"]
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "mass";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_countability_lexicon (lex from "../../lex/en/numeral_forms.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN", Number="Sing", lemma=lex.noun_lemma];
+          numSlot [feat = "num", type = "F"];
+          event -> numSlot
+      }
+      without {
+          *-[mod]->node
+      }
+      without {
+          token -[det]->token2;
+          token2 [Definite="Ind", PronType="Art"];
+      }
+      without {
+          node -[mod]-> token2;
+          token2 [concept="every"|"each"]
+      }
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = lex.num_value;
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  rule mark_countability_unknown (lex from "../../lex/en/numeral_forms.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node [!nonref];
+          node -[anchor]->token;
+          token [upos="NOUN", Number="Sing"];
+          numSlot [feat = "num", type = "F"];
+          event -> numSlot
+      }
+      without {
+          *-[mod]->node   % purpose modifiers too?
+      }
+      without {
+          token -[det]->token2;
+          token2 [Definite="Ind", PronType="Art"];
+      }
+      without {
+          node -[mod]-> token2;
+          token2 [concept="every"|"each"]
+      }
+      without { token [lemma=lex.noun_lemma] }  % the lexicon rule has these
+      without {
+          numValue [feat="num", type="L"];
+          numSlot->numValue;
+          numValue->node
+      }
+      commands {
+          add_node numValue;
+          numValue.value = "singular,mass";
+          numValue.type = "L";
+          numValue.feat = numSlot.feat;
+          add_edge arc:numSlot->numValue;
+          add_edge arc2:numValue->node
+      }
+  }
+
+  % Ordered by hand, because several of these rules match the same nouns.
+  %
+  % Running the package to a fixed point instead would let them race: the
+  % bare-noun rule and the lexicon rules both match an undetermined singular,
+  % and the numeral rule overlaps the bare-noun rule on "one dog".
+  %
+  % The order states a priority: morphology and closed-class words first,
+  % since they are direct evidence; then the countability lexicon, where it
+  % has an entry; then the hedge for lemmas it does not know. No rule logic
+  % changes — each already declines to overwrite a value that is there, so
+  % sequencing alone decides who gets first refusal.
+  %
+  % Both orderings were measured. Consulting the lexicon before context beats
+  % the reverse, which overrode correct entries on bare nouns; and the hedge
+  % has to come before the bare-noun rule, for the reason noted below.
+  strat number_sequence {
+    Seq(
+      Onf(mark_pluralia_tantum),
+      Onf(mark_singular_quantified),
+      Onf(mark_singular_article),
+      Onf(mark_singular_numeral),
+      Onf(mark_singular_proper),
+      Onf(mark_singular_pronoun),
+      Onf(mark_plural_pronoun),
+      Onf(mark_ambiguous_pronoun),
+      Onf(mark_plural),
+      Onf(mark_countability_lexicon),   % trusted wherever the lexicon has an entry
+      Onf(mark_countability_unknown),   % no entry: keep the honest hedge rather
+                                        % than guess a countability
+      Onf(mark_mass_bare)               % in practice unreachable — the two rules
+                                        % above claim every undetermined singular.
+                                        % Kept rather than deleted, and kept last:
+                                        % moving it ahead of the hedge was measured
+                                        % to call bare count nouns in compounds
+                                        % mass, because the absence of a determiner
+                                        % is not evidence of anything in English.
+                                        % It needs a real countability signal
+                                        % before it can run any earlier.
+    )
+  }
+}

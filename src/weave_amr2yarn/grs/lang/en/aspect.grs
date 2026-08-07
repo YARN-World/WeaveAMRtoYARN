@@ -1,0 +1,777 @@
+package aspect {
+  % How a situation unfolds in time.
+  %
+  % Every rule here fires on a surface configuration that admits only one
+  % reading — a construction, an adverbial, a verb from a lexicon. Nothing is
+  % guessed: a predicate matching no rule is left with no aspect at all,
+  % which is an honest answer and one the pending package makes visible.
+  %
+  % Three groups, most specific first:
+  %
+  %   habitual   the "used to" construction; frequency adverbs; an oblique
+  %              "every" with a temporal noun
+  %   activity   a progressive auxiliary, or a bare gerund under an
+  %              aspectualizer that presents its complement as ongoing
+  %   state      a verb in the stative lexicon, and the three copular shapes
+  %
+  % The order is a priority, and every rule declines on a predicate that has
+  % been given an aspect already, so the first to fire wins.
+  %
+  % All of them require the tense layer to have got somewhere first: aspect
+  % here is read relative to tense, not independently of it.
+
+
+  % "used to" — a finite "use" taking a bare infinitive complement.
+  %
+  % Instrumental "use" — "I used a hammer to fix the chair" — takes an object
+  % and an adverbial clause instead, so it never matches.
+  rule mark_habitual_used_to {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", VerbForm="Inf"];
+          token2 -[xcomp]-> token;
+          token2 [lemma="use", VerbForm="Fin"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> node
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->node
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "habitual";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+
+
+  % A frequency adverb: usually, always, often, sometimes, rarely, seldom,
+  % daily, weekly, monthly, everyday — and the genericity adverbs typically,
+  % generally, normally, traditionally, commonly.
+  % "never" is deliberately absent: zero frequency is a negation, not a
+  % habit, and AMR writes it as a polarity marker for the negation layer.
+  rule mark_habitual_adverb {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token -[advmod]-> token2;
+          token2 [lemma="usually"|"always"|"often"|"sometimes"|"rarely"|"seldom"|"daily"|"weekly"|"monthly"|"everyday"|"typically"|"generally"|"normally"|"traditionally"|"commonly"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> node
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->node
+      }
+      without {
+          % a copular shape belongs to the state rules below
+          token [upos="ADJ"|"NOUN"|"PROPN"];
+          token -[aux:pass]-> token3;
+          token3 [lemma="be"]
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "habitual";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+
+
+  % An oblique "every" with a temporal noun: "every Tuesday", "every morning".
+  %
+  % Parsers label bare temporal noun phrases inconsistently, so either
+  % oblique relation is accepted. What keeps the rule honest is the lexicon
+  % on the noun rather than the label.
+  %
+  % "Every" in subject or object position — "every dog barks", "I read every
+  % book" — reaches the verb by a different relation entirely, so requiring
+  % an oblique excludes it.
+  rule mark_habitual_iterative {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token -[obl:tmod|obl:unmarked]-> token2;
+          token2 [lemma="Monday"|"Tuesday"|"Wednesday"|"Thursday"|"Friday"|"Saturday"|"Sunday"|"January"|"February"|"March"|"April"|"May"|"June"|"July"|"August"|"September"|"October"|"November"|"December"|"year"|"month"|"week"|"day"|"hour"|"minute"|"second"|"weekend"|"morning"|"afternoon"|"evening"|"night"|"midnight"|"noon"];
+          token2 -[det]-> token3;
+          token3 [lemma="every"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> node
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->node
+      }
+      without {
+          % a copular shape belongs to the state rules below
+          token [upos="ADJ"|"NOUN"|"PROPN"];
+          token -[aux:pass]-> token4;
+          token4 [lemma="be"]
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "habitual";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+
+
+  % The progressive: a form of "be" with a present participle.
+  rule mark_progressive_auxiliary (lex from "../../lex/en/stative_verbs.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[anchor]-> token;
+          token [upos="VERB", Tense="Pres", VerbForm="Part"]|[upos="VERB", VerbForm="Ger"];
+          token -[aux]-> token2;
+          token2 [lemma="be"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {
+          predicate [pred = lex.state_roleset]
+      }
+      without {
+          token -[aux]-> token3;
+          token3 [lemma="have"]
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "activity";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+
+  % A bare gerund, with no auxiliary: "she stopped talking".
+  %
+  % The complement names an ongoing process with no endpoint, which is an
+  % activity. This is the other half of the progressive rule above — there
+  % the gerund has an auxiliary, here it stands alone, typically as the
+  % complement of an aspectualizer.
+  %
+  % The gerund carries no tense itself, but the embedded predicate has been
+  % given one, so the precondition still holds.
+  %
+  % A stative verb in gerund form is not coerced into a dynamic reading, so
+  % this rule steps aside for one: "stopped talking" is an activity, while
+  % "stopped knowing" falls through to the lexical state rule. The rule stays
+  % single-purpose — it never writes a state, it only declines. The
+  % progressive rule carries the same guard, so what counts as a state is
+  % decided in exactly one place.
+  rule mark_activity_gerund (lex from "../../lex/en/stative_verbs.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[anchor]-> token;
+          token [upos="VERB", VerbForm="Ger"];
+          % Only under an aspectualizer that presents its complement as
+          % ongoing — begin, start, continue, keep. The ones that bound the
+          % event, whether by ending it or by completing it, are excluded:
+          % their complement is not an activity, and they have rules of their
+          % own below. Requiring the aspectualizer also keeps this off
+          % participial and relative-clause gerunds.
+          node -[xcomp]-> token;                   % the aspectualizer's gerund complement
+          predicate2 -[anchor]-> node;                   % and the frame behind it
+          predicate2 [pred="begin-01"|"start-01"|"continue-01"|"keep-01"];  % frames that present the event as ongoing
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {                          % with an auxiliary it is a progressive, handled above
+          token -[aux]-> token2;
+          token2 [lemma="be"]
+      }
+      without {                          % a stative verb falls through to the lexical rule
+          predicate [pred = lex.state_roleset]
+      }
+      without {                          % leave an aspect that is already there
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "activity";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+
+  % A bounded performance, from a container adverbial: "in three hours".
+  %
+  % Currently unreachable — the sequence below has it commented out.
+  %
+  % The same shape as the endeavor rule that follows, distinguished only by
+  % the preposition. Neither reads the AMR at all: what makes the adverbial
+  % temporal is that its head noun is in the duration lexicon.
+  % One rule serves both AMR spellings of a duration, because the surface
+  % cue is the same either way. The lexicon behind it is drawn from the
+  % WordNet time-period, time-unit and time-interval senses.
+  rule mark_performance_bounded (lex from "../../lex/en/duration_nouns.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Past"];   % a verb, so no copular shape; and past
+          token -[obl]-> token2;                    % the adverbial
+          token2 -[case]-> token3;
+          token3  [upos="ADP", lemma="in"];       % "in", not "for" — the only difference
+          token2 [lemma=lex.duration_noun];      % temporal because its head noun is in the lexicon
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> node
+      }
+      without {                              % leave an aspect that is already there
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> node
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "performance";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+
+  % An unbounded stretch, from a durative adverbial: "for three hours".
+  %
+  % The twin of the rule above — same structure, same lexicon — separated
+  % only by the preposition, so the two can never both fire.
+  rule mark_endeavor_bounded (lex from "../../lex/en/duration_nouns.lex", slex from "../../lex/en/stative_verbs.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[anchor]-> token;
+          token [upos="VERB", Tense="Past"];   % a verb, so no copular shape; and past
+          token -[obl]-> token2;                    % the adverbial
+          token2 -[case]-> token3;
+          token3  [upos="ADP", lemma="for"];      % "for", not "in" — the only difference
+          token2 [lemma=lex.duration_noun];      % temporal because its head noun is in the lexicon
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {                              % a stative verb falls through to the lexical rule.
+          % "knew her for years" is still a state; here the adverbial
+          % measures the extent of one rather than bounding an endeavor
+          predicate [pred = slex.state_roleset]
+      }
+      without {
+          % "for the first time" counts occurrences rather than measuring a
+          % stretch, and gives itself away with an ordinal on the noun
+          token2 -[amod]-> node;
+          node [NumType="Ord"]
+      }
+      without {                              % leave an aspect that is already there
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "endeavor";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+  % A completive aspectualizer: "she finished writing the essay".
+  %
+  % Finishing, completing and accomplishing all reach a result, which makes
+  % the matrix predicate a performance. Its mirror below covers the verbs
+  % that stop without reaching one.
+  rule mark_performance_completive {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred="finish-01"|"complete-01"|"accomplish-01"];  % frames that reach a result
+          predicate -[anchor]-> token;
+          token [upos="VERB", Tense="Past"];   % a verb, so no copular shape; and past
+          token -[xcomp]-> token2;                  % its complement
+          token2 [upos="VERB", VerbForm="Ger"];  % which must be a gerund
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {                              % leave an aspect that is already there
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "performance";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+  % A terminative aspectualizer: "she stopped writing the essay".
+  %
+  % Stopping, quitting and ceasing end the event without reaching a result,
+  % so the matrix predicate is an endeavor rather than a performance. The
+  % frame list is the only thing separating this from the rule above, and the
+  % two lists are disjoint.
+  %
+  % Requiring a gerund keeps out "she stopped to talk", which is a purpose
+  % clause and says nothing about aspect.
+  rule mark_endeavor_terminative {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred="stop-01"|"quit-01"|"cease-01"|"discontinue-01"];  % frames that stop without reaching one
+          predicate -[anchor]-> token;
+          token [upos="VERB", Tense="Past"];   % a verb, so no copular shape; and past
+          token -[xcomp]-> token2;                  % its complement
+          token2 [upos="VERB", VerbForm="Ger"];  % a gerund, so an infinitive complement is excluded
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "endeavor";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+  % A span with both ends given: "she talked from nine to five".
+  %
+  % Bounded, but stretched out, which makes it an endeavor.
+  %
+  % The cue is the interval concept, and by the time this runs the tense
+  % layer has already consumed the edge that led to it — so the interval is
+  % reached through the placeholder value the tense layer left behind rather
+  % than through the AMR edge.
+  rule mark_endeavor_interval (lex from "../../lex/en/stative_verbs.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[anchor]-> token;
+          token [upos="VERB", Tense="Past"];
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L", value="_"];   % the value standing in for the time expression
+          tempSlot -> tempValue;
+          tempValue -> conceptNode;
+          conceptNode [concept="date-interval"];             % the interval itself
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first, and the tense value proper — not the placeholder
+          % standing in for the time expression matched above.
+          tempValue2 [feat="temp", type="L"];
+          tempSlot -> tempValue2;
+          tempValue2 -> predicate
+      }
+      without {                                      % a stative verb falls through to the lexical rule
+          predicate [pred = lex.state_roleset]               % a span over a state is still a state
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "endeavor";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+  % A process with an endpoint but no beginning given: "she talked until
+  % noon". Stretched out and bounded, so again an endeavor.
+  %
+  % Read entirely off the surface, which makes it indifferent to how the AMR
+  % encodes it and keeps it clear of the genuine "before" reading. The
+  % dependent may be a time point or a whole clause.
+  %
+  % Requiring a verb excludes the copular "was happy until noon", where the
+  % adverbial hangs off the adjective instead.
+  rule mark_endeavor_until (lex from "../../lex/en/stative_verbs.lex") {
+      pattern {
+          event [type="S"]; event -[link]-> predicate;
+          predicate -[anchor]-> token;
+          token [upos="VERB", Tense="Past"];   % a verb, so no copular shape; and past
+          token -[obl|advcl]-> node;             % the bounded dependent: a time point or a clause
+          node -[case|mark]-> token2;
+          token2  [lemma="until"];
+          aspectSlot [feat="aspect", type="F"]; event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without { predicate [pred = lex.state_roleset] }   % a state bounded this way is still a state
+      without { aspectValue [feat="aspect", type="L"]; aspectSlot -> aspectValue; aspectValue -> predicate }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "endeavor";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+
+  %  S1 — lexical State (stative-verb lexicon)
+  % A predicate whose roleset is in the stative lexicon (grs/stative_verbs.lex, 238
+  % is lexically a state, whatever form it appears in. The lexicon behind it
+  % comes from the VerbNet state classes.
+  %
+  % This is the one place that decides the question. Every construction rule
+  % above carries the same guard and steps aside for a verb in this lexicon,
+  % so "knew her for years", "stopped knowing" and "is hoping" all end up
+  % here. Aspect in this sense describes
+  % what is being described, not how it is being viewed, so a progressive
+  % form does not override it. This rule runs last in the sequence below, so
+  % it is a strict fallback for whatever the guarded rules declined.
+  rule mark_state_lexical (lex from "../../lex/en/stative_verbs.lex") {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred = lex.state_roleset];
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first: aspect is read relative to it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "state";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+
+  % Telicity, where a classifier has already decided it.
+  %
+  % A step running before the rule set marks a verb anchor as telic when it
+  % is confident. Combined with the simple past, that is reliable; anywhere
+  % else it is not, which is why the tense is part of the condition rather
+  % than an afterthought.
+  %
+  % A strict fallback: it runs after every construction rule, so a
+  % progressive or habitual reading always wins and this only fills in plain
+  % telic predicates in the simple past.
+  rule mark_performance_telic {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", telic="Yes"];   % telic by the classifier, and simple past
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L", value="past"];
+          tempSlot -> tempValue;
+          tempValue -> node2
+      }
+      without {                          % "the devastated village" - state
+          node3 -[amod]-> token
+      }
+      % the passive auxiliary, which keeps its reading.
+      without {
+          token2 [lemma="be", Tense="Pres", VerbForm="Part"];
+          token -[aux:pass]-> token2;
+          % a finite auxiliary as well, so this excludes the progressive
+          % proper and not the gerundive adjuncts that look like it
+          token3 [lemma="be"];
+          token -[aux]-> token3
+      }
+      without {                          % leave an aspect that is already there
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> node
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "perfective";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+
+
+  % Copulars are states by default. The three rules that follow split the
+  % same way the tense layer and the copula package do: a bare concept, a
+  % predicate frame, and a frame with no word of its own.
+  %
+  % First, the bare concept, where the state attaches to the domain
+  % relation.
+  rule mark_state_copular_concept {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node -> node2;
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          % the tense sits on the relation here, so the aspect follows it
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          hyperedge [feat="temp", type="H"];
+          tempSlot -> hyperedge;
+          hyperedge -> node2
+      }
+      without {
+          hyperedge2 [feat="aspect", type="H"];
+          aspectSlot->hyperedge2;
+          hyperedge2->node2
+      }
+      commands {
+          add_node hyperedge2;
+          hyperedge2.value = "state";
+          hyperedge2.type = "H";
+          hyperedge2.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->hyperedge2;
+          add_edge arc2:hyperedge2->node2
+      }
+  }
+
+
+  % Then the predicate frame, where the state goes on the frame itself.
+  rule mark_state_copular_predicate {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred];
+          predicate -[anchor]-> token;
+          token [upos="ADJ"|"NOUN"];
+          token -[aux:pass]-> token2;
+          token2 [lemma="be"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->predicate
+      }
+      without {
+          % the bare-concept case is the rule above
+          node [rel="domain"];
+          predicate -> node
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "state";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+
+  % Last, the locational frames, which have no word of their own in the
+  % sentence. The copula turns up on the argument instead, so this reaches
+  % the predicate through it. The tense layer has its own pair of rules for
+  % the same shape.
+  rule mark_state_copular_locative {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]-> token;
+          token [lemma="be"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> predicate
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->predicate
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "state";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->predicate
+      }
+  }
+
+
+  % Fallback
+  rule mark_aspect_pending {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;               % predicates only
+          token [upos="VERB"];
+          aspectSlot [feat="aspect", type="F"];
+          event -> aspectSlot;
+          % tense first, as everywhere in this package
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> node
+      }
+      without {                          % nothing above claimed this predicate
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot -> aspectValue;
+          aspectValue -> node
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "todo";
+          aspectValue.type  = "L";
+          aspectValue.feat  = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+
+
+  % Ordered by hand, not run to a fixed point.
+  %
+  % Several of these match the same predicate, and the order is the priority:
+  % constructions first, since they are direct evidence, then the lexicon,
+  % then the classifier, then the placeholder for whatever is left. Running
+  % them as a package would let the fallbacks outrun the constructions.
+  strat aspect_sequence {
+    Seq(
+      Onf(mark_habitual_used_to),
+      Onf(mark_habitual_adverb),
+      Onf(mark_habitual_iterative),
+      Onf(mark_progressive_auxiliary),
+      Onf(mark_activity_gerund),
+      Onf(mark_performance_bounded),
+      Onf(mark_endeavor_bounded),
+      Onf(mark_performance_completive),
+      Onf(mark_endeavor_terminative),
+      Onf(mark_endeavor_interval),
+      Onf(mark_endeavor_until),
+      Onf(mark_state_lexical),           % the lexicon, after every construction
+      Onf(mark_state_copular_concept),
+      Onf(mark_state_copular_predicate),
+      Onf(mark_state_copular_locative),
+      Onf(mark_performance_telic),       % the classifier, later still
+      Onf(mark_aspect_pending)     % and a marker for whatever is left
+    )
+  }
+}

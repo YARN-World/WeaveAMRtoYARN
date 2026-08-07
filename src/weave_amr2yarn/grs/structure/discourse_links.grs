@@ -1,0 +1,19 @@
+package discourse_links {
+  rule flip_coordination_direction {
+      pattern {
+          event [type="S"];
+          event2 [type="S"];
+          discourseNode [disc="CONJUNCTION", type="D"]|[disc="DISJUNCTION", type="D"];
+          conceptNode [concept="_"];
+          arc: event->discourseNode;
+          arc2: discourseNode->event2;
+          event2 -[link]-> conceptNode
+      }
+      commands {
+          add_edge arc3: event2->discourseNode;
+          add_edge arc4: discourseNode->event;
+          del_edge arc;
+          del_edge arc2
+      }
+  }
+}

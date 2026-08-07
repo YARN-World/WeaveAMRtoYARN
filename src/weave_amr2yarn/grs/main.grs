@@ -1,0 +1,358 @@
+% Entry point of the rule set: it pulls in every package and declares the
+% strategies. No rules of its own.
+%
+% `include` rather than `import` on purpose. An imported file is named after
+% the whole import string, so `import "amr/quantification.grs"` would give a
+% package called `amr/quantification` — and `/` is not in the character class
+% a strategy reference is lexed with, so nothing could ever call it. It loads
+% without complaint and fails on the first rewrite. `include` splices the
+% declarations in as they are, and each file names its own package.
+%
+% Order is everything here: a package is run to a fixed point, so what it can
+% see depends entirely on what ran before it. The inline notes below record
+% the orderings that are load-bearing; the rest is convention. The scoping
+% pair in particular runs at several points, not once — each later pass has
+% new events to spread from, and collapsing them changes the output.
+
+include "amr/canonicalize.grs"
+include "amr/dereification.grs"
+include "structure/skeleton.grs"
+include "structure/reference.grs"
+include "amr/event_expansion.grs"
+include "amr/discourse.grs"
+include "structure/discourse_links.grs"
+include "structure/localize_core.grs"
+include "structure/localize_events.grs"
+include "structure/localize_orphans.grs"
+include "lang/en/modal_verbs.grs"
+include "lang/en/copula.grs"
+include "structure/clause_links.grs"
+include "lang/en/predicate_repair.grs"
+include "amr/duration.grs"
+include "amr/quantification.grs"
+include "experimental/quantification_draft.grs"
+include "experimental/hyperedge_draft.grs"
+include "amr/modality.grs"
+include "lang/en/modification.grs"
+include "amr/mood.grs"
+include "amr/manner_layer.grs"
+include "lang/en/location.grs"
+include "amr/negation.grs"
+include "lang/en/definiteness.grs"
+include "amr/frequency.grs"
+include "lang/en/number.grs"
+include "amr/deixis.grs"
+include "amr/degree.grs"
+include "amr/question.grs"
+include "lang/en/tense.grs"
+include "lang/en/tense_future.grs"
+include "lang/en/tense_pending.grs"
+include "lang/en/aspect.grs"
+include "lang/en/aspect_pending.grs"
+include "structure/focus.grs"
+include "lang/en/direction.grs"
+include "structure/hyperedges.grs"
+include "structure/finalize.grs"
+include "structure/finalize_eval.grs"
+include "structure/inclusion.grs"
+include "amr/distributivity.grs"
+include "amr/event_recovery.grs"
+
+strat main {
+    Seq (
+        Onf (canonicalize),
+        Onf (dereification), %unfolds the reified -91 predicates back into plain relations
+        Onf (predicate_repair),
+        Onf (copula), %ahead of modal_verbs
+        Onf (modal_verbs),
+        Onf (inclusion),
+        Onf (event_expansion),
+        Onf (discourse), %after event_expansion
+        Onf (discourse_links), %after discourse
+        Onf (localize_core), Onf (localize_events),
+        Onf (localize_core), Onf (localize_events), %again: an event minted since the first pass still needs its subtree
+        Onf (event_recovery), %last resort: nothing became an event, so the AMR root is made one
+        Onf (localize_core), Onf (localize_events), %give the recovered event its subtree
+        Onf (localize_orphans), %a node nothing localized borrows its child's event; ties are left alone
+        Onf (localize_core), Onf (localize_events), %reach into whatever was just adopted
+        Onf (skeleton),
+        Onf (reference), %flags non-referential nominals, which the three nominal layers then skip
+        Onf (distributivity), %ahead of modification/manner_layer/quantification, whose cues it eats
+        Onf (duration),
+        Onf (deixis), %ahead of modification
+        Onf (modification),
+        Onf (manner_layer),
+        Onf (location),
+        Onf (direction),
+        Onf (definiteness),
+        number.number_sequence, %ordered by hand: a fixed point lets the lexicon race the mass rules
+        Onf (quantification), %after number
+        Onf (negation), %after quantification, so a negated quantifier has something to attach to
+        Onf (degree),
+        Onf (frequency),
+        Onf (mood),
+        Onf (question),
+        Onf (tense_future), %ahead of tense: the periphrastic future is read off the auxiliary
+        Onf (tense),
+        Onf (tense_pending), %after tense, so it only fills what was left empty
+        aspect.aspect_sequence,    %ordered by hand, see aspect.grs
+        Onf (aspect_pending), %after aspect, so it only fills what was left empty
+        Onf (modality),
+        Onf (clause_links),
+        Onf (hyperedges),
+        Onf (focus), %after clause_links
+        Onf (finalize) %always last
+    )
+}
+
+strat eval {
+    Seq (
+        Onf (canonicalize),
+        Onf (dereification), %unfolds the reified -91 predicates back into plain relations
+        Onf (predicate_repair),
+        Onf (copula), %ahead of modal_verbs
+        Onf (modal_verbs),
+        Onf (inclusion),
+        Onf (event_expansion),
+        Onf (discourse), %after event_expansion
+        Onf (discourse_links), %after discourse
+        Onf (localize_core), Onf (localize_events),
+        Onf (localize_core), Onf (localize_events), %again: an event minted since the first pass still needs its subtree
+        Onf (event_recovery), %last resort: nothing became an event, so the AMR root is made one
+        Onf (localize_core), Onf (localize_events), %give the recovered event its subtree
+        Onf (localize_orphans), %a node nothing localized borrows its child's event; ties are left alone
+        Onf (localize_core), Onf (localize_events), %reach into whatever was just adopted
+        Onf (skeleton),
+        Onf (reference), %flags non-referential nominals, which the three nominal layers then skip
+        Onf (distributivity), %ahead of modification/manner_layer/quantification, whose cues it eats
+        Onf (duration),
+        Onf (deixis), %ahead of modification
+        Onf (modification),
+        Onf (manner_layer),
+        Onf (location),
+        Onf (direction),
+        Onf (definiteness),
+        number.number_sequence, %ordered by hand: a fixed point lets the lexicon race the mass rules
+        Onf (quantification), %after number
+        Onf (negation), %after quantification, so a negated quantifier has something to attach to
+        Onf (degree),
+        Onf (frequency),
+        Onf (mood),
+        Onf (question),
+        Onf (tense_future), %ahead of tense: the periphrastic future is read off the auxiliary
+        Onf (tense),
+        Onf (tense_pending), %after tense, so it only fills what was left empty
+        aspect.aspect_sequence,    %ordered by hand: a fixed point lets the lexical fallback outrun the constructions
+        Onf (aspect_pending), %after aspect, so it only fills what was left empty
+        Onf (modality),
+        Onf (clause_links),
+        Onf (hyperedges),
+        Onf (focus), %after clause_links
+        Onf (finalize_eval),
+        Onf (finalize), %always last
+    )
+}
+
+strat eval_norescue {
+    Seq (
+        Onf (canonicalize),
+        Onf (dereification), %unfolds the reified -91 predicates back into plain relations
+        Onf (predicate_repair),
+        Onf (copula), %ahead of modal_verbs
+        Onf (modal_verbs),
+        Onf (inclusion),
+        Onf (event_expansion),
+        Onf (discourse), %after event_expansion
+        Onf (discourse_links), %after discourse
+        Onf (localize_core), Onf (localize_events),
+        Onf (localize_core), Onf (localize_events), %again: an event minted since the first pass still needs its subtree
+        Onf (localize_orphans), %a node nothing localized borrows its child's event; ties are left alone
+        Onf (localize_core), Onf (localize_events), %reach into whatever was just adopted
+        Onf (skeleton),
+        Onf (reference), %flags non-referential nominals, which the three nominal layers then skip
+        Onf (distributivity), %ahead of modification/manner_layer/quantification, whose cues it eats
+        Onf (duration),
+        Onf (deixis), %ahead of modification
+        Onf (modification),
+        Onf (manner_layer),
+        Onf (location),
+        Onf (direction),
+        Onf (definiteness),
+        number.number_sequence, %ordered by hand: a fixed point lets the lexicon race the mass rules
+        Onf (quantification), %after number
+        Onf (negation), %after quantification, so a negated quantifier has something to attach to
+        Onf (degree),
+        Onf (frequency),
+        Onf (mood),
+        Onf (question),
+        Onf (tense_future), %ahead of tense: the periphrastic future is read off the auxiliary
+        Onf (tense),
+        Onf (tense_pending), %after tense, so it only fills what was left empty
+        aspect.aspect_sequence,    %ordered by hand: a fixed point lets the lexical fallback outrun the constructions
+        Onf (aspect_pending), %after aspect, so it only fills what was left empty
+        Onf (modality),
+        Onf (clause_links),
+        Onf (hyperedges),
+        Onf (focus), %after clause_links
+        Onf (finalize_eval),
+        Onf (finalize), %always last
+    )
+}
+
+% The staged-hyperedge route.
+%
+% main and eval again, but the four op1 quantifier rules go the long way
+% round: quantification_draft mints a placeholder hyperedge that names no
+% slot of its own, and hyperedge_draft turns it into a real one just before
+% hyperedges. The draft pass runs immediately before quantification and
+% eats the subtree, so quantification's own op1 rules never see it. The two
+% routes are expected to agree; they exist to make the placeholder step
+% observable on its own.
+strat main_pending {
+    Seq (
+        Onf (canonicalize),
+        Onf (dereification),
+        Onf (predicate_repair),
+        Onf (copula), %ahead of modal_verbs
+        Onf (modal_verbs),
+        Onf (inclusion),
+        Onf (event_expansion),
+        Onf (discourse), %after event_expansion
+        Onf (discourse_links), %after discourse
+        Onf (localize_core), Onf (localize_events),
+        Onf (localize_core), Onf (localize_events), %again: an event minted since the first pass still needs its subtree
+        Onf (event_recovery), %last resort: nothing became an event, so the AMR root is made one
+        Onf (localize_core), Onf (localize_events), %give the recovered event its subtree
+        Onf (localize_orphans), %a node nothing localized borrows its child's event; ties are left alone
+        Onf (localize_core), Onf (localize_events), %reach into whatever was just adopted
+        Onf (skeleton),
+        Onf (reference), %flags non-referential nominals, which the three nominal layers then skip
+        Onf (distributivity), %ahead of modification/manner_layer/quantification, whose cues it eats
+        Onf (duration),
+        Onf (deixis), %ahead of modification
+        Onf (modification),
+        Onf (manner_layer),
+        Onf (location),
+        Onf (direction),
+        Onf (definiteness),
+        number.number_sequence, %ordered by hand: a fixed point lets the lexicon race the mass rules
+        Onf (quantification_draft), %immediately before quantification, whose op1 subtrees it consumes
+        Onf (quantification), %after number
+        Onf (negation), %after quantification, so a negated quantifier has something to attach to
+        Onf (degree),
+        Onf (frequency),
+        Onf (mood),
+        Onf (question),
+        Onf (tense_future), %ahead of tense: the periphrastic future is read off the auxiliary
+        Onf (tense),
+        Onf (tense_pending), %after tense, so it only fills what was left empty
+        aspect.aspect_sequence,    %ordered by hand: a fixed point lets the lexical fallback outrun the constructions
+        Onf (aspect_pending), %after aspect, so it only fills what was left empty
+        Onf (modality),
+        Onf (clause_links),
+        Onf (hyperedge_draft), %resolve the drafted hyperedges, before hyperedges routes them
+        Onf (hyperedges),
+        Onf (focus), %after clause_links
+        Onf (finalize) %always last
+    )
+}
+
+strat eval_pending {
+    Seq (
+        Onf (canonicalize),
+        Onf (dereification),
+        Onf (predicate_repair),
+        Onf (copula), %ahead of modal_verbs
+        Onf (modal_verbs),
+        Onf (inclusion),
+        Onf (event_expansion),
+        Onf (discourse), %after event_expansion
+        Onf (discourse_links), %after discourse
+        Onf (localize_core), Onf (localize_events),
+        Onf (localize_core), Onf (localize_events), %again: an event minted since the first pass still needs its subtree
+        Onf (event_recovery), %last resort: nothing became an event, so the AMR root is made one
+        Onf (localize_core), Onf (localize_events), %give the recovered event its subtree
+        Onf (localize_orphans), %a node nothing localized borrows its child's event; ties are left alone
+        Onf (localize_core), Onf (localize_events), %reach into whatever was just adopted
+        Onf (skeleton),
+        Onf (reference), %flags non-referential nominals, which the three nominal layers then skip
+        Onf (distributivity), %ahead of modification/manner_layer/quantification, whose cues it eats
+        Onf (duration),
+        Onf (deixis), %ahead of modification
+        Onf (modification),
+        Onf (manner_layer),
+        Onf (location),
+        Onf (direction),
+        Onf (definiteness),
+        number.number_sequence, %ordered by hand: a fixed point lets the lexicon race the mass rules
+        Onf (quantification_draft), %immediately before quantification, whose op1 subtrees it consumes
+        Onf (quantification), %after number
+        Onf (negation), %after quantification, so a negated quantifier has something to attach to
+        Onf (degree),
+        Onf (frequency),
+        Onf (mood),
+        Onf (question),
+        Onf (tense_future), %ahead of tense: the periphrastic future is read off the auxiliary
+        Onf (tense),
+        Onf (tense_pending), %after tense, so it only fills what was left empty
+        aspect.aspect_sequence,    %ordered by hand: a fixed point lets the lexical fallback outrun the constructions
+        Onf (aspect_pending), %after aspect, so it only fills what was left empty
+        Onf (modality),
+        Onf (clause_links),
+        Onf (hyperedge_draft), %resolve the drafted hyperedges, before hyperedges routes them
+        Onf (hyperedges),
+        Onf (focus), %after clause_links
+        Onf (finalize_eval),
+        Onf (finalize), %always last
+    )
+}
+
+% eval with the reference pass taken out: nothing is ever flagged as
+% non-referential, so the three nominal layers apply to every nominal.
+% Kept to measure what that pass is worth.
+strat eval_noref {
+    Seq (
+        Onf (canonicalize),
+        Onf (dereification), %unfolds the reified -91 predicates back into plain relations
+        Onf (predicate_repair),
+        Onf (copula), %ahead of modal_verbs
+        Onf (modal_verbs),
+        Onf (inclusion),
+        Onf (event_expansion),
+        Onf (discourse), %after event_expansion
+        Onf (discourse_links), %after discourse
+        Onf (localize_core), Onf (localize_events),
+        Onf (localize_core), Onf (localize_events), %again: an event minted since the first pass still needs its subtree
+        Onf (event_recovery), %last resort: nothing became an event, so the AMR root is made one
+        Onf (localize_core), Onf (localize_events), %give the recovered event its subtree
+        Onf (localize_orphans), %a node nothing localized borrows its child's event; ties are left alone
+        Onf (localize_core), Onf (localize_events), %reach into whatever was just adopted
+        Onf (skeleton),
+        Onf (distributivity), %ahead of modification/manner_layer/quantification, whose cues it eats
+        Onf (duration),
+        Onf (deixis), %ahead of modification
+        Onf (modification),
+        Onf (manner_layer),
+        Onf (location),
+        Onf (direction),
+        Onf (definiteness),
+        number.number_sequence, %ordered by hand: a fixed point lets the lexicon race the mass rules
+        Onf (quantification), %after number
+        Onf (negation), %after quantification, so a negated quantifier has something to attach to
+        Onf (degree),
+        Onf (frequency),
+        Onf (mood),
+        Onf (question),
+        Onf (tense_future), %ahead of tense: the periphrastic future is read off the auxiliary
+        Onf (tense),
+        Onf (tense_pending), %after tense, so it only fills what was left empty
+        aspect.aspect_sequence,    %ordered by hand: a fixed point lets the lexical fallback outrun the constructions
+        Onf (aspect_pending), %after aspect, so it only fills what was left empty
+        Onf (modality),
+        Onf (clause_links),
+        Onf (hyperedges),
+        Onf (focus), %after clause_links
+        Onf (finalize_eval),
+        Onf (finalize), %always last
+    )
+}

@@ -1,0 +1,36 @@
+package predicate_repair {
+  % Repairs to the AMR that only make sense once the surface form is known.
+  %
+  % This sits under lang/en rather than with the AMR-only packages because
+  % both rules read a UD part of speech off the anchored token. The reified
+  % predicates are handled in dereification, which needs no such help.
+
+  % age-01 with no ARG0 is predicative — "be old" rather than "age".
+  rule recast_age_as_adjective {
+      pattern {
+          predicate [pred="age-01"]
+      }
+      without {
+          predicate-[ARG0]->*
+      }
+      commands {
+          predicate.pred = "old-01";
+      }
+  }
+
+  % An ARG1 predicate anchored to an adverb is not a participant but a manner
+  % modifier, so the relation is turned around.
+  rule recast_adverbial_modifier {
+      pattern {
+          predicate [pred];
+          arc: predicate -[ARG1]-> predicate2;
+          predicate2 [pred];
+          predicate -[anchor]-> token;
+          token [upos="ADV"]
+      }
+      commands {
+          add_edge predicate2-[manner]->predicate;
+          del_edge arc
+      }
+  }
+}

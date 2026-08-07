@@ -1,0 +1,147 @@
+package distributivity {
+  % Whether a plural argument acts one by one or as a group.
+  %
+  % Only the four cues that are unambiguous. All of them read a modifier of
+  % the predicate and write the answer onto its ARG0:
+  %
+  %   :mod each              → one at a time
+  %   :manner together       → as a group
+  %   :manner separate-02    → one at a time
+  %   :manner individual-02  → one at a time
+  %
+  % This runs before the modification, manner and quantification layers,
+  % which would otherwise consume the same modifiers.
+  %
+
+  rule spread_each_over_agent {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred];
+          arc: predicate -[ARG0]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="each"];
+          distrSlot [feat="distr", type="F"];
+          event -> distrSlot
+      }
+      without {
+          relation [rel="ARG0", type="E"];
+          predicate -> relation;
+          relation -> node
+      }
+      commands {
+          add_node relation;
+          relation.rel = "ARG0";
+          relation.type = "E";
+          add_edge arc2: predicate -> relation;
+          add_edge arc3: relation -> node;
+          del_edge arc;
+
+          add_node hyperedge;
+          hyperedge.value = "distributive";
+          hyperedge.type = "H";
+          hyperedge.feat = distrSlot.feat;
+          add_edge arc4: distrSlot -> hyperedge;
+          add_edge arc5: hyperedge -> relation
+      }
+  }
+
+  rule mark_collective {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred];
+          arc: predicate -[ARG0]-> node;
+          predicate -[manner]-> conceptNode;
+          conceptNode [concept="together"];
+          distrSlot [feat="distr", type="F"];
+          event -> distrSlot
+      }
+      without {
+          relation [rel="ARG0", type="E"];
+          predicate -> relation;
+          relation -> node
+      }
+      commands {
+          add_node relation;
+          relation.rel = "ARG0";
+          relation.type = "E";
+          add_edge arc2: predicate -> relation;
+          add_edge arc3: relation -> node;
+          del_edge arc;
+
+          add_node hyperedge;
+          hyperedge.value = "collective";
+          hyperedge.type = "H";
+          hyperedge.feat = distrSlot.feat;
+          add_edge arc4: distrSlot -> hyperedge;
+          add_edge arc5: hyperedge -> relation
+      }
+  }
+
+  rule mark_separate {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred];
+          arc: predicate -[ARG0]-> node;
+          predicate -[manner]-> predicate2;
+          predicate2 [pred="separate-02"];
+          distrSlot [feat="distr", type="F"];
+          event -> distrSlot
+      }
+      without {
+          relation [rel="ARG0", type="E"];
+          predicate -> relation;
+          relation -> node
+      }
+      commands {
+          add_node relation;
+          relation.rel = "ARG0";
+          relation.type = "E";
+          add_edge arc2: predicate -> relation;
+          add_edge arc3: relation -> node;
+          del_edge arc;
+
+          add_node hyperedge;
+          hyperedge.value = "distributive";
+          hyperedge.type = "H";
+          hyperedge.feat = distrSlot.feat;
+          add_edge arc4: distrSlot -> hyperedge;
+          add_edge arc5: hyperedge -> relation
+      }
+  }
+
+  rule mark_individual {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred];
+          arc: predicate -[ARG0]-> node;
+          predicate -[manner]-> predicate2;
+          predicate2 [pred="individual-02"];
+          distrSlot [feat="distr", type="F"];
+          event -> distrSlot
+      }
+      without {
+          relation [rel="ARG0", type="E"];
+          predicate -> relation;
+          relation -> node
+      }
+      commands {
+          add_node relation;
+          relation.rel = "ARG0";
+          relation.type = "E";
+          add_edge arc2: predicate -> relation;
+          add_edge arc3: relation -> node;
+          del_edge arc;
+
+          add_node hyperedge;
+          hyperedge.value = "distributive";
+          hyperedge.type = "H";
+          hyperedge.feat = distrSlot.feat;
+          add_edge arc4: distrSlot -> hyperedge;
+          add_edge arc5: hyperedge -> relation
+      }
+  }
+}

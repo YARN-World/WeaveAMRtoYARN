@@ -1,0 +1,48 @@
+package finalize_eval {
+  rule drop_wiki_feature {
+      pattern {
+          node -[wiki]-> node2
+      }
+      commands {
+          del_node node2
+      }
+  }
+
+  rule drop_polite_feature {
+      pattern {
+          node -[polite]-> node2
+      }
+      commands {
+          del_node node2
+      }
+  }
+
+  rule drop_pending_feature {
+      pattern {
+          node [value="todo"]
+      }
+      commands {
+          node.value = ""
+      }
+  }
+
+  % Both of these exist to match a reference convention that writes the
+  % placeholder as an absence rather than a value.
+  rule drop_placeholder_value {
+      pattern {
+          node [value="_"]
+      }
+      commands {
+          node.value = ""
+      }
+  }
+
+  rule drop_placeholder_concept {
+      pattern {
+          conceptNode [concept="_"]
+      }
+      commands {
+          conceptNode.concept = ""
+      }
+  }
+}

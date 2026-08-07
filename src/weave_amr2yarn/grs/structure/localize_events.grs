@@ -1,0 +1,66 @@
+package localize_events {
+  rule localize_downward {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          amrNode [!id];
+          node [!id];
+          node -> amrNode;
+          amrNode [type="V"|"E"]
+      }
+      without {
+          * -[link]-> amrNode
+      }
+      without {
+          event2 [type="S"];
+          event.__id__ < event2.__id__;
+          event2 -[link]-> amrNode
+      }
+      commands {
+          add_edge event -[link]-> amrNode
+      }
+  }
+
+  rule localize_through_inclusion {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -> inclusionNode;
+          inclusionNode [type="I"];
+          inclusionNode -> amrNode;
+          amrNode [type="V"]
+      }
+      without {
+          * -[link]-> amrNode
+      }
+      commands {
+          add_edge event -[link]-> amrNode
+      }
+  }
+
+  % Unnecessary once root concepts are localized like everything else.
+  rule localize_to_focus {
+      pattern {
+          event [type="S"];
+          focusSlot [feat="focus", type="F"];
+          event -> focusSlot;
+          layerValue [value="_", type="L"];
+          focusSlot->layerValue;
+          layerValue->node;
+          node2 [var];
+          node [var];
+          node -> node2
+      }
+      without {
+          event -[link]-> node2
+      }
+      without {
+          event2 [type="S"];
+          event.__id__ < event2.__id__;
+          event2 -[link]-> node2
+      }
+      commands {
+          add_edge event -[link]-> node2
+      }
+  }
+}

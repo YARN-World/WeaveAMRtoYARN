@@ -1,0 +1,25 @@
+package reference {
+  % The one place that decides which nodes are not referential nominals.
+  %
+  % Every rule here is a classifier and nothing more: it writes the `nonref`
+  % flag and leaves anchors, event links and AMR edges exactly as they were.
+  % The definiteness, number and quantification layers are what act on it, by
+  % declining to fire on a flagged node. On its own this package changes no
+  % output at all.
+
+  % "today", "yesterday" and "tomorrow" hanging off :time are temporal
+  % values, not things being referred to: the reference annotation gives them
+  % a single bare value and none of the three nominal layers. The same words
+  % used as arguments, with no :time edge ("Today is Saturday"), stay
+  % referential. The :time edge is not consumed until the tense layer, so it
+  % is still there to be tested here.
+  rule mark_nonreferential_temporal {
+      pattern {
+          * -[time]-> conceptNode;
+          conceptNode [concept="day"|"today"|"yesterday"|"tomorrow"|"date-interval", !nonref]
+      }
+      commands {
+          conceptNode.nonref = "yes"
+      }
+  }
+}

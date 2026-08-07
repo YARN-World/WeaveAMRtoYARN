@@ -1,0 +1,955 @@
+package tense {
+  % Indicative forms.
+
+  rule mark_tense_from_amr {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred];
+          arc:predicate -[time]-> node;
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [value="_", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          del_edge arc;
+          add_node tempValue;
+          tempValue.value = "_";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2:tempSlot->tempValue;
+          add_edge arc3:tempValue->node
+      }
+  }
+
+  rule mark_past_simple_asserted {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot;
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue2;
+          tempValue2.value = "past";
+          tempValue2.type = "L";
+          tempValue2.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue2;
+          add_edge arc2:tempValue2->node
+      }
+  }
+
+  rule mark_past_simple {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", VerbForm="Inf"];
+          token -[aux]->token2;
+          token2 [lemma="do", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot;
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  % "used to" — the past habitual.
+  %
+  % Gated tightly, because "use" is an ordinary verb too. The construction
+  % needs a past-tense "use" heading a bare infinitive through an open
+  % complement; instrumental "use" takes an object and an adverbial clause
+  % instead, so it never matches. Requiring past tense also keeps out the
+  % present, which is not English.
+  rule mark_past_habitual {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", VerbForm="Inf"];
+          token2 -[xcomp]-> token;
+          token2 [lemma="use", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_past_progressive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Pres", VerbForm="Part"];
+          token -[aux]-> token2;
+          token2 [lemma = "be", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_past_anterior {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Pres"|"Past", VerbForm="Part"];
+          token -[aux]-> token2;
+          token2 [lemma = "have", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_simple_asserted {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_simple {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", VerbForm="Inf"];
+          token -[aux]->token2;
+          token2 [lemma="do", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_progressive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Pres", VerbForm="Part"]|[upos="VERB", VerbForm="Ger"];
+          token -[aux]-> token2;
+          token2 [lemma = "be", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present, future";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_anterior {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Past", VerbForm="Part"];
+          token -[aux]-> token2;
+          token2 [lemma = "have", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_anterior_progressive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB", Tense="Pres", VerbForm="Part"];
+          token -[aux]-> token2;
+          token2 [lemma = "have", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "continuative";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  % Passive forms.
+
+  % Every passive rule below carries the same locational guard.
+  %
+  % Where the node is the argument of a reified locational frame, the copula
+  % on its anchor belongs to the frame rather than to it, and the locational
+  % rules further down attach the tense there instead.
+  %
+  % The guard is repeated in each rule rather than factored out. Grew has no
+  % way to share a `without` block, and inlining at least keeps every rule
+  % readable on its own.
+
+  rule mark_past_simple_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_past_progressive_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Part"];
+          node2 -[aux]-> token2;
+          token2 [lemma = "be", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_past_anterior_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Pres"|"Past", VerbForm="Part"];
+          node2 -[aux]-> token2;
+          token2 [lemma = "have", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_simple_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_progressive_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Part"]|[upos="VERB", VerbFrom="Ger"];
+          node2 -[aux]-> token2;
+          token2 [lemma = "be", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_anterior_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Past", VerbForm="Part"];
+          node2 -[aux]-> token2;
+          token2 [lemma = "have", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  rule mark_present_anterior_progressive_passive {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Part"];
+          node2 -[aux]-> token2;
+          token2 [lemma = "have", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node
+      }
+      % A bare-concept copular carries a domain relation, and its tense
+      % belongs on that relation rather than on the concept. The copula was
+      % rewritten into a passive auxiliary, so without this guard the passive
+      % rules below would fire on it a second time.
+      without {
+          relation [rel="domain", type="E"];
+          node -> relation
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "continuative";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+
+  % The locational frames have no word of their own in the sentence, so the
+  % copula turns up on their argument. These two mirror the passive shape but
+  % reach it through the argument, and put the tense on the predicate.
+
+  rule mark_present_simple_locative {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]-> token;
+          token [lemma="be", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->predicate
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->predicate
+      }
+  }
+
+  rule mark_past_simple_locative {
+      pattern {
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node;
+          node -[anchor]-> node2;
+          node2 -[aux:pass]-> token;
+          token [lemma="be", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->predicate
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "past";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->predicate
+      }
+  }
+
+  % Reading tense straight off an auxiliary.
+  %
+  % Where a predicate anchors to a finite auxiliary or copula rather than to
+  % a lexical verb, that token is all there is to read. This covers frames
+  % with no word of their own, whose anchor ends up on the copula, and
+  % do-support.
+  %
+  % Restricted to the three auxiliary lemmas: "will" belongs to the future
+  % package, and modals carry no tense of their own to give.
+  %
+  % It cannot collide with the rules above. Those all require a verb on the
+  % anchor, and the guard below keeps this one out of periphrastic forms —
+  % "has finished", "did go" — where the verb is what carries the tense. The
+  % passive auxiliary is deliberately left unguarded, since the copula is
+  % rewritten into one and copular anchors are this rule's main business.
+
+  rule mark_past_simple_auxiliary {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="AUX", lemma="be"|"have"|"do", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot;
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without { node2 -[aux]-> token }
+      commands {
+          add_node tempValue2;
+          tempValue2.value = "past";
+          tempValue2.type = "L";
+          tempValue2.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue2;
+          add_edge arc2:tempValue2->node
+      }
+  }
+
+  rule mark_present_simple_auxiliary {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="AUX", lemma="be"|"have"|"do", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot;
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      without { node2 -[aux]-> token }
+      commands {
+          add_node tempValue2;
+          tempValue2.value = "present";
+          tempValue2.type = "L";
+          tempValue2.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue2;
+          add_edge arc2:tempValue2->node
+      }
+  }
+
+  % Copular forms.
+
+  rule mark_past_simple_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node->node2;
+          node -[anchor]-> node3;
+          node3 -[aux:pass]->token;
+          token [Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "past";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node2
+      }
+  }
+
+  rule mark_past_progressive_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node->node2;
+          node -[anchor]-> node3;
+          node3 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Part"];
+          node3 -[aux]-> token2;
+          token2 [lemma = "be", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "past";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node2
+      }
+  }
+
+  rule mark_past_anterior_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node->node2;
+          node -[anchor]-> node3;
+          node3 -[aux:pass]->token;
+          token [Tense="Pres"|"Past", VerbForm="Part"];
+          node3 -[aux]-> token2;
+          token2 [lemma = "have", Tense="Past", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "past";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node2
+      }
+  }
+
+  rule mark_present_simple_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> node2;
+          node3 [rel="domain"];
+          node->node3;
+          node2 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node3
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "present";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node3
+      }
+  }
+
+  rule mark_present_progressive_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node->node2;
+          node -[anchor]-> node3;
+          node3 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Part"]|[upos="VERB", VerbFrom="Ger"];
+          node3 -[aux]-> token2;
+          token2 [lemma = "be", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "present";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node2
+      }
+  }
+
+  rule mark_present_anterior_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node->node2;
+          node -[anchor]-> node3;
+          node3 -[aux:pass]->token;
+          token [Tense="Past", VerbForm="Part"];
+          node3 -[aux]-> token2;
+          token2 [lemma = "have", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "continuative, past";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node2
+      }
+  }
+
+  rule mark_present_anterior_progressive_copular {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node2 [rel="domain"];
+          node->node2;
+          node -[anchor]-> node3;
+          node3 -[aux:pass]->token;
+          token [Tense="Pres", VerbForm="Part"];
+          node3 -[aux]-> token2;
+          token2 [lemma = "have", Tense="Pres", VerbForm="Fin"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          hyperedge [feat="temp", type="H"];
+          tempSlot->hyperedge;
+          hyperedge->node2
+      }
+      commands {
+          add_node hyperedge;
+          hyperedge.value = "continuative";
+          hyperedge.type = "H";
+          hyperedge.feat = tempSlot.feat;
+          add_edge arc:tempSlot->hyperedge;
+          add_edge arc2:hyperedge->node2
+      }
+  }
+
+  % Still open: copulars with a predicate, and modifiers.
+
+  % Imperative.
+  rule mark_imperative {
+      pattern {
+          event [type="S"];
+          predicate [pred];
+          event -[link]-> predicate;
+          moodSlot [feat="mood", type="F"];
+          layerValue [value="imperative", type="L"];
+          event -> moodSlot;
+          moodSlot -> layerValue;
+          layerValue -> predicate;
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->predicate
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "present";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc: tempSlot->tempValue;
+          add_edge arc2: tempValue->predicate
+      }
+  }
+
+  % Ability. Left disabled: "can" is modality rather than tense, and
+  % the modality layer already reads it.
+  %rule mark_present_ability {
+  %    pattern {
+  %        event [type="S"];
+  %        event -[link]-> predicate;
+  %        predicate [pred="possible-01"];
+  %        predicate -[anchor]-> token;
+  %        token [lemma="can"];
+  %        tempSlot [feat="temp", type="F"];
+  %        event -> tempSlot
+  %    }
+  %    without {
+  %        tempValue [feat="temp", type="L"];
+  %        tempSlot -> tempValue;
+  %        tempValue -> predicate
+  %    }
+  %    commands {
+  %        add_node tempValue;
+  %        tempValue.value = "present";
+  %        tempValue.type = "L";
+  %        tempValue.feat = tempSlot.feat;
+  %        add_edge arc: tempSlot -> tempValue;
+  %        add_edge arc2: tempValue -> predicate
+  %    }
+  %}
+}

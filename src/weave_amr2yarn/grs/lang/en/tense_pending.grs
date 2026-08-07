@@ -1,0 +1,25 @@
+package tense_pending {
+  rule fill_empty_tense {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB"];
+          tempSlot [feat="temp", type="F"];
+          event->tempSlot
+      }
+      without {
+          tempValue [feat="temp", type="L"];
+          tempSlot->tempValue;
+          tempValue->node
+      }
+      commands {
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc:tempSlot->tempValue;
+          add_edge arc2:tempValue->node
+      }
+  }
+}

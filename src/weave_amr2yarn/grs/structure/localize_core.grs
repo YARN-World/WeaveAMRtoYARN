@@ -1,0 +1,32 @@
+package localize_core {
+  % First half of the scoping pair: give each node to the nearest event.
+  %
+  % This runs before localize_events at every point the pair appears, and that
+  % order is what makes the result reproducible. An argument reachable from
+  % two events is claimed here by the one whose own predicate is its direct
+  % parent. Left to the generic spread alone, it would go to whichever
+  % frontier happened to reach it first — an order the engine decides, and
+  % one that shifts when unrelated rules are edited.
+  %
+  % The `core` feature naming that predicate is written by whatever minted
+  % the event. A genuine tie (a reentrant argument sitting directly under two
+  % events) cannot be broken here — grew compares features numerically only —
+  % so it falls through to the tie-break in localize_events.
+  rule localize_from_core {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          event.core = node.var;
+          amrNode [!id];
+          node [!id];
+          node -> amrNode;
+          amrNode [type="V"|"E"]
+      }
+      without {
+          * -[link]-> amrNode
+      }
+      commands {
+          add_edge event -[link]-> amrNode
+      }
+  }
+}

@@ -1,0 +1,54 @@
+package canonicalize {
+  % AMR in, AMR out: put the graph into one shape before anything reads it.
+  %
+  % Four constraints hold every rule in this package, and they are what let
+  % it run first, before any YARN structure exists:
+  %
+  %   * the output is still an AMR — no node types, slots or values;
+  %   * anchor edges may be moved or dropped but never read, so nothing here
+  %     depends on a part of speech or a lemma;
+  %   * a variable that survives keeps its name;
+  %   * a rule that deletes the node carrying the focus marker moves it.
+  %
+
+  % AMR allows either direction; settle on one so nothing downstream has to
+  % test for both.
+  rule invert_part_relation {
+      pattern {
+          arc: node -[part]-> node2
+      }
+      commands {
+          add_edge node2 -[part-of]-> node;
+          del_edge arc
+      }
+  }
+
+  % "always" under :time says how often, not when. Relabelling the edge hands
+  % it to the frequency layer; the node itself becomes that layer's value.
+  rule recast_always_as_frequency {
+      pattern {
+          arc: node -[time]-> conceptNode;
+          conceptNode [concept="always"]
+      }
+      commands {
+          add_edge node -[frequency]-> conceptNode;
+          del_edge arc
+      }
+  }
+
+  % The ordinal wrapper carries no meaning of its own — it exists to hold a
+  % number. Drop it and let the number stand where it stood.
+  rule drop_ordinal_entity {
+      pattern {
+          arc: node -[ord]-> conceptNode;
+          conceptNode [concept="ordinal-entity"];
+          arc2: conceptNode -[value]-> node2
+      }
+      commands {
+          add_edge node -[ord]-> node2;
+          del_edge arc;
+          del_edge arc2;
+          del_node conceptNode
+      }
+  }
+}

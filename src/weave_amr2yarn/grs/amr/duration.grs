@@ -1,0 +1,74 @@
+package duration {
+  rule measure_duration {
+      pattern {
+          predicate [pred];
+          conceptNode [concept = "temporal-quantity"];
+          arc: predicate -[duration]-> conceptNode;
+          event [type="S"];
+          event -[link]-> predicate;
+          durationSlot [feat="duration", type="F"];
+          event -> durationSlot
+      }
+      commands {
+          add_node durationValue;
+          durationValue.value = "_";
+          durationValue.type = "L";
+          durationValue.feat = durationSlot.feat;
+          add_edge arc2: durationSlot->durationValue;
+          add_edge arc3: durationValue->conceptNode;
+          del_edge arc
+      }
+  }
+
+  rule measure_duration_concept_unit {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[duration]-> node;
+          node -[op1]->conceptNode;
+          conceptNode [concept];
+          durationSlot [feat="duration", type="F"];
+          event -> durationSlot
+      }
+      without {
+          node -[op2]->*
+      }
+      commands {
+          add_node durationValue;
+          durationValue.value = node.concept;
+          durationValue.type = "L";
+          durationValue.feat = durationSlot.feat;
+          add_edge arc: durationSlot->durationValue;
+          add_edge arc2: durationValue->conceptNode;
+          del_node node
+      }
+  }
+
+  rule measure_duration_predicate_unit {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[duration]-> node;
+          node -[op1]->predicate2;
+          predicate2 [pred];
+          event2 [type="S"];
+          event2 -[link]-> predicate2;
+          durationSlot [feat="duration", type="F"];
+          event -> durationSlot
+      }
+      without {
+          node -[op2]->*
+      }
+      commands {
+          add_node durationValue;
+          durationValue.value = node.concept;
+          durationValue.type = "L";
+          durationValue.feat = durationSlot.feat;
+          add_edge arc: durationSlot->durationValue;
+          add_edge arc2: durationValue->event2;
+          del_node node
+      }
+  }
+}

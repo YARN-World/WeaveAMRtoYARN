@@ -1,0 +1,40 @@
+package modification {
+  rule mark_modification {
+      pattern {
+          event [type="S"];
+          predicate [pred];
+          event -[link]-> predicate;
+          arc: predicate -[mod]-> conceptNode;
+          modSlot [feat="mod", type="F"];
+          event->modSlot
+      }
+      without {   % quantifier modifiers belong to the number and
+                  % quantification layers, which run later
+          conceptNode [concept="every"|"each"|"all"|"few"|"several"|"many"|"most"]
+      }
+      commands {
+          add_node modValue;
+          modValue.value = "_";
+          modValue.type = "L";
+          modValue.feat = modSlot.feat;
+          add_edge arc2: modSlot->modValue;
+          add_edge arc3: modValue->conceptNode;
+          del_edge arc
+      }
+  }
+
+  % A second rule for the unanchored case, which would otherwise leave an
+  % edge pointing at nothing.
+  rule mark_modification_unanchored {
+      pattern {
+          modSlot [feat="mod", type="F"];
+          layerValue [type="L"];
+          modSlot -> layerValue;
+          layerValue -> node;
+          arc: node -[anchor]-> node2
+      }
+      commands {
+          del_edge arc
+      }
+  }
+}

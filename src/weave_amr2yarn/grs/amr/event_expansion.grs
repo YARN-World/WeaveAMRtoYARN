@@ -1,0 +1,271 @@
+package event_expansion {
+  rule localize_coordination_both {
+      pattern {
+          conceptNode [concept="and"|"or"];
+          predicate [pred];
+          predicate2 [pred];
+          conceptNode -> predicate;
+          conceptNode -> predicate2;
+          event [type="S"];
+          event -[link]-> predicate2;
+      }
+      without {
+          *-[link]->predicate;
+      }
+      without {
+          event2 [type="S"];
+          event2 -[link]-> predicate
+      }
+      commands {
+          add_node event2;
+          event2.event = "__S__";
+          event2.type = "S";
+          event2.src = "localize_coordination_both";
+          event2.core = predicate.var;
+          add_edge event2-[link]->predicate;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event2->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate
+      }
+  }
+
+  rule localize_coordination_second {
+      pattern {
+          conceptNode [concept="and"|"or"];
+          predicate [pred];
+          conceptNode -[op2]-> predicate;
+      }
+      without {
+          conceptNode -[op1]-> node;
+      }
+      without {
+          event [type="S"];
+          event -[link]-> predicate
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_coordination_second";
+          event.core = predicate.var;
+          add_edge event-[link]->predicate;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate
+      }
+  }
+
+  % Could be generalised to link the arguments regardless of the shape.
+  rule localize_cause {
+      pattern {
+          predicate [pred="cause-01"];
+          predicate2 [pred];
+          predicate3 [pred];
+          predicate -> predicate2;
+      }
+      without {
+          *-[link]->predicate2;
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_cause";
+          event.core = predicate2.var;
+          add_edge event-[link]->predicate2;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate2
+      }
+  }
+
+  % Could be generalised to link the arguments regardless of the shape.
+  rule localize_contrast {
+      pattern {
+          predicate [pred="contrast-01"];
+          predicate2 [pred];
+          predicate3 [pred];
+          predicate -> predicate2;
+      }
+      without {
+          *-[link]->predicate2;
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_contrast";
+          event.core = predicate2.var;
+          add_edge event-[link]->predicate2;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate2
+      }
+  }
+
+  rule localize_condition_antecedent {
+      pattern {
+          predicate [pred];
+          predicate -[condition]->node;
+      }
+      without {
+          *-[link]->predicate;
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_condition_antecedent";
+          event.core = predicate.var;
+          add_edge event-[link]->predicate;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate
+      }
+  }
+
+  rule localize_condition_consequent {
+      pattern {
+          predicate [pred];
+          node -[condition]->predicate;
+      }
+      without {
+          *-[link]->predicate;
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_condition_consequent";
+          event.core = predicate.var;
+          add_edge event-[link]->predicate;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate
+      }
+  }
+
+  rule localize_ordering_main {
+      pattern {
+          predicate [pred];
+          conceptNode [concept="before"|"after"];
+          predicate -[time]-> conceptNode;
+          conceptNode -[op1]-> predicate2;
+          predicate2 [pred]
+      }
+      without {
+          event [type="S"];
+          event -[link]-> predicate
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_ordering_main";
+          event.core = predicate.var;
+          add_edge event -[link]-> predicate;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate
+      }
+  }
+
+  rule localize_ordering_embedded {
+      pattern {
+          predicate [pred];
+          conceptNode [concept="before"|"after"];
+          predicate -[time]-> conceptNode;
+          conceptNode -[op1]-> predicate2;
+          predicate2 [pred]
+      }
+      without {
+          event [type="S"];
+          event -[link]-> predicate2
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_ordering_embedded";
+          event.core = predicate2.var;
+          add_edge event -[link]-> predicate2;
+          add_node tempSlot;
+          tempSlot.feat = "temp";
+          tempSlot.type = "F";
+          add_edge arc: event->tempSlot;
+          add_node tempValue;
+          tempValue.value = "todo";
+          tempValue.type = "L";
+          tempValue.feat = tempSlot.feat;
+          add_edge arc2: tempSlot->tempValue;
+          add_edge arc3: tempValue->predicate2
+      }
+  }
+
+  rule localize_special_predicate {
+      pattern {
+          predicate [pred="locate-01"|"like-04"|"old-01"]|[pred=re".*-00"]
+      }
+      without {
+          event [type="S"];
+          event -[link]-> predicate
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "localize_special_predicate";
+          event.core = predicate.var;
+          add_edge event-[link]->predicate
+      }
+  }
+}

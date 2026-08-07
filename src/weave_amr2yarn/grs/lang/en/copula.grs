@@ -1,0 +1,182 @@
+package copula {
+  rule recast_copula_as_passive {
+      pattern {
+          node [id];
+          node2 [id];
+          arc:node -[cop]-> node2
+      }
+      commands {
+          add_edge node -[aux:pass]-> node2;
+          del_edge arc
+      }
+  }
+
+  rule lift_domain_to_node {
+      pattern {
+          arc:node -[domain]-> node2
+      }
+      commands {
+          add_node relation;
+          relation.rel = "domain";
+          relation.type = "E";
+          add_edge arc2: node->relation;
+          add_edge arc3: relation->node2;
+          del_edge arc;
+      }
+  }
+
+  rule open_domain_event {
+      pattern {
+          relation [rel="domain", type="E"];
+          node -> relation;
+          relation -> node2
+      }
+      without {
+          event [type="S"];
+          event -[link]-> node
+      }
+      without {
+          predicate [pred="have-degree-91"];
+          predicate -[ARG2]-> node
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "open_domain_event";
+          event.core = node.var;
+          add_edge event -[link]->node
+      }
+  }
+
+  % A predicate whose anchor carries a copula heads a clause.
+  %
+  % The copula itself is the evidence, so the part of speech of the word it
+  % attaches to does not matter — an adjective, a noun or even a particle all
+  % qualify. Enumerating the parts of speech instead misses the long tail.
+  %
+  % The :domain route below is separate and unconditional: that edge always
+  % produces an event, copula or no copula.
+  rule open_copular_event {
+      pattern {
+          predicate [pred];
+          predicate -[anchor]-> token;
+          token -[cop]-> node;
+      }
+      without {
+          event [type="S"];
+          event -[link]-> predicate
+      }
+      % A proper noun used predicatively — "it is ITEL-XZ" — names something
+      % rather than predicating of it, so it heads no event.
+      without { token [upos="PROPN"] }
+      % Operators head no event of their own. The modal frames belong to the
+      % modality layers, which express them as hyperedges rather than events —
+      % "I was able to make it" is one event, not two. Cause is the discourse
+      % layer's connective, and inclusion has its own treatment.
+      without { predicate [pred="possible-01"|"obligate-01"|"permit-01"|"recommend-01"|"cause-01"|"include-91"] }
+      % One event per copula. Where a frame and its own argument anchor to the
+      % same word — as a degree frame and the adjective it grades both do on a
+      % comparative — the outer frame takes it: one predication, one event.
+      without {
+          predicate2 [pred];
+          predicate2 -[anchor]-> token;
+          predicate2 -> predicate
+      }
+      without {
+          predicate3 [pred];
+          predicate3 -[anchor]-> node;
+      }
+      % Not the argument of a reified locational predication. In "I was at the
+      % meeting" the copula on "meeting" belongs to the locating predicate,
+      % which the locative rule below handles; the eventive noun must not
+      % raise a second event off the same copula.
+      without {
+          predicate2 [pred="locate-01"|"originate-01"];
+          predicate2 -[ARG2]-> predicate
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "open_copular_event";
+          event.core = predicate.var;
+          add_edge event -[link]-> predicate
+      }
+  }
+
+  % The same, for a predicate that has no frame at all.
+  %
+  % "I was small" leaves AMR with a bare concept and a :domain relation rather
+  % than a numbered frame. That relation is what separates this from any other
+  % concept node in the graph.
+  %
+  % It has to run before both of the rules that would take its evidence away:
+  % the one that turns the :domain edge into a node, and the one that rewrites
+  % the copula as a passive auxiliary.
+  rule open_copular_event_concept {
+      pattern {
+          conceptNode [concept];
+          conceptNode -[domain]-> node;
+          conceptNode -[anchor]-> node2;
+          node2 -[cop]-> node3;
+      }
+      without {
+          event [type="S"];
+          event -[link]-> conceptNode
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "open_copular_event_concept";
+          event.core = conceptNode.var;
+          add_edge event -[link]-> conceptNode
+      }
+  }
+
+  % The same again, where the predicate is not in the sentence.
+  %
+  % A locational or origin frame has no word of its own to anchor to — "I was
+  % in the drawer" spells out the location, not the locating. So the copula
+  % turns up on the argument instead. Seeing it there is enough to put the
+  % event on the frame, which is where it belongs, and which is what lets the
+  % tense and aspect layers find it later.
+  rule open_copular_event_locative {
+      pattern {
+          predicate [pred="locate-01"|"originate-01"];
+          predicate -[ARG2]-> node;
+          node -[anchor]-> node2;
+          node2 -[cop]-> node3
+      }
+      without {
+          event [type="S"];
+          event -[link]-> predicate
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "open_copular_event_locative";
+          event.core = predicate.var;
+          add_edge event -[link]-> predicate
+      }
+  }
+
+  % Ordered by hand rather than run to a fixed point: every rule above reads
+  % the copula, and the last one rewrites it away.
+  %
+  % Nothing calls this. Onf on the package runs the same rules in declaration
+  % order, which happens to agree; the sequence is kept because it states the
+  % dependency that order relies on.
+  strat copula_sequence {
+      Seq(
+          Onf(open_copular_event),
+          Onf(open_copular_event_concept),
+          Onf(open_copular_event_locative),
+          Onf(lift_domain_to_node),
+          Onf(open_domain_event),
+          Onf(recast_copula_as_passive)
+      )
+  }
+}

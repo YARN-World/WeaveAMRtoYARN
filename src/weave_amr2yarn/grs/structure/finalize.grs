@@ -1,0 +1,208 @@
+package finalize {
+  rule drop_empty_slots {
+      pattern {
+          event [type = "S"];
+          slot [type = "F"];
+          arc:event->slot
+      }
+      without {
+          slot->node
+      }
+      commands {
+          del_node slot
+      }
+  }
+
+  % Cosmetic: the location argument is conventionally a modifier rather than
+  % a numbered one. It had to stay numbered up to now, because the locational
+  % tense and aspect rules reach it by that name. Only the locating frame —
+  % the origin frame keeps its numbering.
+  rule retype_locative_argument {
+      pattern {
+          predicate [pred="locate-01"];
+          predicate -> relation;
+          relation [rel="ARG2", type="E"]
+      }
+      commands {
+          relation.rel = "ARGM"
+      }
+  }
+
+  rule drop_empty_values {
+      pattern {
+          event [type = "S"];
+          slot [type = "F"];
+          layerValue [type = "L"];
+          arc:event->slot;
+          arc2:slot->layerValue
+      }
+      without {
+          layerValue->node
+      }
+      commands {
+          del_edge arc2;
+          del_node layerValue
+      }
+  }
+
+  rule drop_ud_scaffolding {
+      pattern {
+          node [id]
+      }
+      commands {
+          del_node node
+      }
+  }
+
+  rule drop_localization_links {
+      pattern {
+          arc: node-[link]->node2
+      }
+      commands {
+          del_edge arc
+      }
+  }
+
+  rule drop_labelled_edges {
+      pattern {
+          node [var];
+          node2 [var];
+          arc: node->node2
+      }
+      commands {
+          add_node relation;
+          relation.rel = arc.1;
+          relation.type = "E";
+          add_edge arc2:node->relation;
+          add_edge arc3:relation->node2;
+          del_edge arc
+      }
+  }
+
+  rule retype_hyperedge_value {
+      pattern {
+          slot [type="F"];
+          layerValue [type="L"];
+          slot->hyperedge;
+          hyperedge->layerValue
+      }
+      without {
+          hyperedge [type="H"]
+      }
+      commands {
+          hyperedge.type = "H"
+      }
+  }
+
+  rule retype_hyperedge_relation {
+      pattern {
+          slot [type="F"];
+          relation [type="E"];
+          slot->hyperedge;
+          hyperedge->relation
+      }
+      without {
+          hyperedge [type="H"]
+      }
+      commands {
+          hyperedge.type = "H"
+      }
+  }
+
+  rule retype_clause_node {
+      pattern {
+          amrNode [type="V"];
+          event [type="S"];
+          amrNode->clauseNode;
+          clauseNode->event
+      }
+      without {
+          clauseNode [type="C"]
+      }
+      commands {
+          clauseNode.type = "C"
+      }
+  }
+
+
+  rule collapse_name_nodes {
+      pattern {
+          relation [rel="name", type="E"];
+          conceptNode [concept = "name"];
+          relation -> conceptNode;
+          conceptNode -> node
+      }
+      commands {
+          del_node conceptNode;
+          add_edge arc: relation->node
+      }
+  }
+
+  rule drop_focus_when_tensed {
+      pattern {
+          event [type="S"];
+          tempSlot [feat="temp", type="F"];
+          focusSlot [feat="focus", type="F"];
+          tempValue [feat="temp", type="L"|"H"];
+          focusValue [feat="focus", type="L"];
+          event->tempSlot;
+          tempSlot->tempValue;
+          event->focusSlot;
+          focusSlot->focusValue
+      }
+      without {
+          tempValue [value="_", feat="temp", type="L"]
+      }
+      commands {
+          del_node focusSlot;
+          del_node focusValue
+      }
+  }
+
+  rule restore_surface_form {
+      pattern {
+          event [type = "S"];
+          conceptNode [concept="_"];
+          event -[link]-> conceptNode
+      }
+      without {
+          *-[^link]-> conceptNode
+      }
+      commands {
+          del_node conceptNode
+      }
+  }
+
+  rule drop_isolated_nodes {
+      pattern {
+          node [!id]
+      }
+      without {
+          *->node
+      }
+      without {
+          node->*
+      }
+      commands {
+          del_node node
+      }
+  }
+
+  % Disabled. Stripping the nominal layers off named entities was measured to
+  % cost accuracy: one reference convention carries them on a name, another
+  % omits them. That disagreement is not this rule set's to settle, and the
+  % pipeline should not destroy information to match one side of it. Filter
+  % at scoring time instead.
+   rule drop_named_entity_slots {
+       pattern {
+           defSlot [feat="def"|"num"|"quant", type="F"];
+           layerValue [type="L"];
+           defSlot -> layerValue;
+           layerValue -> node;
+           node -[name]-> node2
+       }
+       commands {
+           del_node layerValue
+       }
+   }
+}

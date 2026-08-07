@@ -1,0 +1,644 @@
+package discourse {
+  %cause
+
+  rule open_causal_event {
+      pattern {
+          predicate [pred = "cause-01"];
+          predicate ->predicate2;
+          predicate2 [pred]|[concept]
+      }
+      without {
+          event [type="S"];
+          event -[link]->predicate2;
+      }
+      without {
+          predicate2 [concept = "amr-unknown"|"amr_unknown"]
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "open_causal_event";
+          event.core = predicate2.var;
+          add_edge event -[link]-> predicate2
+      }
+  }
+
+  rule canonicalize_cause_arg0 {
+      pattern {
+          predicate [pred="cause-01"];
+          predicate -[ARG0]-> node
+      }
+      without {
+          predicate -[ARG1]-> node2
+      }
+      commands {
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_edge predicate -[ARG1]-> amrNode;
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "canonicalize_cause_arg0";
+          event.core = "_";
+          add_edge event-[link]->amrNode
+      }
+  }
+
+  rule canonicalize_cause_arg1 {
+      pattern {
+          predicate [pred="cause-01"];
+          predicate -[ARG1]-> node
+      }
+      without {
+          predicate -[ARG0]-> node2
+      }
+      commands {
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_edge predicate -[ARG0]-> amrNode;
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "canonicalize_cause_arg1";
+          event.core = "_";
+          add_edge event-[link]->amrNode
+      }
+  }
+
+  rule link_causal_root {
+      pattern {
+          predicate [pred="cause-01"];
+          predicate -[ARG0]-> node;
+          predicate -[ARG1]-> node2;
+          event [type="S"];
+          event2 [type="S"];
+          event -[link]-> node;
+          event2 -[link]-> node2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "CAUSE";
+          discourseNode.type = "D";
+          add_edge arc:event->discourseNode;
+          add_edge arc2:discourseNode->event2;
+          del_node predicate
+      }
+  }
+
+  rule link_causal_nested {
+      pattern {
+          event [type="S"];
+          predicate [pred="cause-01"];
+          event -[link]-> predicate;
+          predicate -[ARG0]-> node;
+          predicate -[ARG1]-> node2;
+          event2 [type="S"];
+          event3 [type="S"];
+          event2 -[link]-> node;
+          event3 -[link]-> node2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "CAUSE";
+          discourseNode.type = "D";
+          add_edge arc:event2->discourseNode;
+          add_edge arc2:discourseNode->event3;
+          add_node discourseNode2;
+          discourseNode2.disc = "_";
+          discourseNode2.type = "D";
+          add_edge arc3:event->discourseNode2;
+          add_edge arc4:discourseNode2->event2;
+          add_node discourseNode3;
+          discourseNode3.disc = "_";
+          discourseNode3.type = "D";
+          add_edge arc5:event->discourseNode3;
+          add_edge arc6:discourseNode3->event3;
+          del_node predicate
+      }
+  }
+
+  %contrast
+
+  rule open_contrastive_event {
+      pattern {
+          predicate [pred = "contrast-01"];
+          predicate ->predicate2;
+          predicate2 [pred]|[concept]
+      }
+      without {
+          event [type="S"];
+          event -[link]->predicate2;
+      }
+      commands {
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "open_contrastive_event";
+          event.core = predicate2.var;
+          add_edge event -[link]-> predicate2
+      }
+  }
+
+  rule canonicalize_contrast_arg1 {
+      pattern {
+          predicate [pred="contrast-01"];
+          predicate -[ARG1]-> node
+      }
+      without {
+          predicate -[ARG2]-> node2
+      }
+      commands {
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_edge predicate -[ARG2]-> amrNode;
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "canonicalize_contrast_arg1";
+          event.core = "_";
+          add_edge event-[link]->amrNode
+      }
+  }
+
+  rule canonicalize_contrast_arg2 {
+      pattern {
+          predicate [pred="contrast-01"];
+          predicate -[ARG2]-> node
+      }
+      without {
+          predicate -[ARG1]-> node2
+      }
+      commands {
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_edge predicate -[ARG1]-> amrNode;
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "canonicalize_contrast_arg2";
+          event.core = "_";
+          add_edge event-[link]->amrNode
+      }
+  }
+
+  rule link_contrastive_root {
+      pattern {
+          predicate [pred="contrast-01"];
+          predicate -[ARG1]-> node;
+          predicate -[ARG2]-> node2;
+          event [type="S"];
+          event2 [type="S"];
+          event -[link]-> node;
+          event2 -[link]-> node2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "CONTRAST";
+          discourseNode.type = "D";
+          add_edge arc:event->discourseNode;
+          add_edge arc2:discourseNode->event2;
+          del_node predicate
+      }
+  }
+
+  rule link_contrastive_nested {
+      pattern {
+          event [type="S"];
+          predicate [pred="contrast-01"];
+          event -[link]-> predicate;
+          predicate -[ARG1]-> node;
+          predicate -[ARG2]-> node2;
+          event2 [type="S"];
+          event3 [type="S"];
+          event2 -[link]-> node;
+          event3 -[link]-> node2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "CONTRAST";
+          discourseNode.type = "D";
+          add_edge arc:event2->discourseNode;
+          add_edge arc2:discourseNode->event3;
+          add_edge arc3:event->event2;
+          add_edge arc4:event->event3;
+          del_node predicate
+      }
+  }
+
+  %and/or
+
+  rule canonicalize_coordination_op1 {
+      pattern {
+          conceptNode [concept = "and"|"or"];
+          conceptNode -[op1]-> node
+      }
+      without {
+          conceptNode -[op2]-> node2
+      }
+      commands {
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_edge conceptNode -[op2]-> amrNode;
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "canonicalize_coordination_op1";
+          event.core = "_";
+          add_edge event-[link]->amrNode
+      }
+  }
+
+  rule canonicalize_coordination_op2 {
+      pattern {
+          conceptNode [concept = "and"|"or"];
+          conceptNode -[op2]-> node
+      }
+      without {
+          conceptNode -[op1]-> node2
+      }
+      commands {
+          add_node amrNode;
+          amrNode.concept = "_";
+          amrNode.type = "V";
+          add_edge conceptNode -[op1]-> amrNode;
+          add_node event;
+          event.event = "__S__";
+          event.type = "S";
+          event.src = "canonicalize_coordination_op2";
+          event.core = "_";
+          add_edge event-[link]->amrNode
+      }
+  }
+
+  rule open_conjunction_root {
+      pattern {
+          conceptNode [concept="and"];
+          %X [pred];
+          %Y [pred];
+          conceptNode -> node;
+          arc: conceptNode -> node2;
+          node.__id__ < node2.__id__;
+          event [type="S"];
+          event2 [type="S"];
+          event.__id__ < event2.__id__;
+          event -[link]-> node;
+          event2 -[link]-> node2;
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          *->event2
+      }
+      without {
+          *->event
+      }
+      without {
+          discourseNode [type="D"];
+          event->discourseNode;
+          discourseNode->event2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "CONJUNCTION";
+          discourseNode.type = "D";
+          add_edge arc2: event->discourseNode;
+          add_edge arc3: discourseNode->event2;
+          del_edge arc
+      }
+  }
+
+  rule extend_conjunction_root {
+      pattern {
+          conceptNode [concept="and"];
+          %X [pred];
+          %Y [pred];
+          conceptNode -> node;
+          arc: conceptNode -> node2;
+          node.__id__ < node2.__id__;
+          event [type="S"];
+          event2 [type="S"];
+          event.__id__ < event2.__id__;
+          event -[link]-> node;
+          event2 -[link]-> node2;
+          discourseNode [type="D"];
+          event2->discourseNode
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          discourseNode2 [type="D"];
+          event->discourseNode2;
+      }
+      commands {
+          add_node discourseNode2;
+          discourseNode2.disc = "CONJUNCTION";
+          discourseNode2.type = "D";
+          add_edge arc2: event->discourseNode2;
+          add_edge arc3: discourseNode2->event2;
+          del_edge arc
+      }
+  }
+
+  rule close_conjunction_root {
+      pattern {
+          conceptNode [concept="and"];
+          %Y [pred];
+          conceptNode -> node;
+          event [type="S"];
+          event -[link]-> node;
+          discourseNode [type="D"];
+          event->discourseNode;
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          conceptNode -> node2;
+          node2.__id__<node.__id__
+      }
+      commands {
+          del_node conceptNode
+      }
+  }
+
+  rule open_disjunction_root {
+      pattern {
+          conceptNode [concept="or"];
+          predicate [pred];
+          predicate2 [pred];
+          conceptNode -> predicate;
+          arc: conceptNode -> predicate2;
+          predicate.__id__ < predicate2.__id__;
+          event [type="S"];
+          event2 [type="S"];
+          event.__id__ < event2.__id__;
+          event -[link]-> predicate;
+          event2 -[link]-> predicate2;
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          *->event2
+      }
+      without {
+          *->event
+      }
+      without {
+          discourseNode [type="D"];
+          event->discourseNode;
+          discourseNode->event2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "DISJUNCTION";
+          discourseNode.type = "D";
+          add_edge arc2: event->discourseNode;
+          add_edge arc3: discourseNode->event2;
+          del_edge arc
+      }
+  }
+
+  rule extend_disjunction_root {
+      pattern {
+          conceptNode [concept="or"];
+          predicate [pred];
+          predicate2 [pred];
+          conceptNode -> predicate;
+          arc: conceptNode -> predicate2;
+          predicate.__id__ < predicate2.__id__;
+          event [type="S"];
+          event2 [type="S"];
+          event.__id__ < event2.__id__;
+          event -[link]-> predicate;
+          event2 -[link]-> predicate2;
+          discourseNode [type="D"];
+          event2->discourseNode
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          discourseNode2 [type="D"];
+          event->discourseNode2;
+      }
+      commands {
+          add_node discourseNode2;
+          discourseNode2.disc = "DISJUNCTION";
+          discourseNode2.type = "D";
+          add_edge arc2: event->discourseNode2;
+          add_edge arc3: discourseNode2->event2;
+          del_edge arc
+      }
+  }
+
+  rule close_disjunction_root {
+      pattern {
+          conceptNode [concept="or"];
+          predicate [pred];
+          conceptNode -> predicate;
+          event [type="S"];
+          event -[link]-> predicate;
+          discourseNode [type="D"];
+          event->discourseNode;
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          conceptNode -> node;
+          node.__id__<predicate.__id__
+      }
+      commands {
+          del_node conceptNode
+      }
+  }
+
+  rule extend_coordination_nested {
+      pattern {
+          event [type="S"];
+          conceptNode [concept="and"|"or"];
+          event -[link]-> conceptNode;
+          arc:conceptNode -> node;
+          event2 [type="S"];
+          event2 -[link]-> node;
+      }
+      commands {
+          add_edge arc2:conceptNode->event2;
+          arc2.label = arc.label;
+          del_edge arc
+      }
+  }
+
+  rule close_coordination_nested {
+      pattern {
+          event [type="S"];
+          conceptNode [concept="and"|"or"];
+          event -[link]-> conceptNode;
+      }
+      without {
+          conceptNode->amrNode;
+          amrNode [type="V"]
+      }
+      without {
+          focusValue [feat = "focus", type = "L"];
+          focusValue->conceptNode
+      }
+      commands {
+          add_node focusSlot;
+          focusSlot.feat = "focus";
+          focusSlot.type = "F";
+          add_edge arc:event->focusSlot;
+          add_node focusValue;
+          focusValue.value = "_";
+          focusValue.type = "L";
+          focusValue.feat = focusSlot.feat;
+          add_edge arc2: focusSlot->focusValue;
+          add_edge arc3: focusValue->conceptNode;
+      }
+  }
+
+  %condition
+
+  rule link_conditional {
+      pattern {
+          predicate [pred];
+          predicate2 [pred];
+          arc:predicate-[condition]->predicate2;
+          event [type="S"];
+          event2 [type="S"];
+          event -[link]-> predicate;
+          event2 -[link]-> predicate2;
+      }
+      without {
+          discourseNode [disc="CONDITIONAL", type="D"];
+          event->discourseNode;
+          discourseNode->event2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "CONDITIONAL";
+          discourseNode.type = "D";
+          add_edge arc2: event->discourseNode;
+          add_edge arc3: discourseNode->event2;
+          del_edge arc
+      }
+  }
+
+  % Temporal ordering.
+
+  rule link_anteriority {
+      pattern {
+          conceptNode [concept="before"|"until"];
+          node -[time]-> conceptNode;
+          conceptNode -[op1]-> node2;
+          event [type="S"];
+          event2 [type="S"];
+          event -[link]-> node;
+          event2 -[link]-> node2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "BEFORE";
+          discourseNode.type = "D";
+          add_edge arc: event->discourseNode;
+          add_edge arc2: discourseNode->event2;
+          del_node conceptNode
+      }
+  }
+
+  rule link_posteriority {
+      pattern {
+          conceptNode [concept="after"|"since"];
+          node -[time]-> conceptNode;
+          conceptNode -[op1]-> node2;
+          event [type="S"];
+          event2 [type="S"];
+          event -[link]-> node;
+          event2 -[link]-> node2
+      }
+      commands {
+          add_node discourseNode;
+          discourseNode.disc = "AFTER";
+          discourseNode.type = "D";
+          add_edge arc: event->discourseNode;
+          add_edge arc2: discourseNode->event2;
+          del_node conceptNode
+      }
+  }
+  % A bare temporal adverb under :time, with nothing hanging off it — the
+  % ordering is stated but the other event is left implicit.
+  rule link_anteriority_bare {
+      pattern {
+          conceptNode [concept="before"|"previous"|"until"];
+          node -[time]-> conceptNode;
+          event [type="S"];
+          event -[link]-> node
+      }
+      without { conceptNode -[^anchor]-> * }
+      commands {
+          add_node event2;
+          event2.event = "__S__";
+          event2.type = "S";
+          event2.src = "link_anteriority_bare";
+          add_node discourseNode;
+          discourseNode.disc = "BEFORE";
+          discourseNode.type = "D";
+          add_edge arc: event->discourseNode;
+          add_edge arc2: discourseNode->event2;
+          del_node conceptNode
+      }
+  }
+
+  rule link_posteriority_bare {
+      pattern {
+          conceptNode [concept="after"|"since"];
+          node -[time]-> conceptNode;
+          event [type="S"];
+          event -[link]-> node
+      }
+      without { conceptNode -[^anchor]-> * }
+      commands {
+          add_node event2;
+          event2.event = "__S__";
+          event2.type = "S";
+          event2.src = "link_posteriority_bare";
+          add_node discourseNode;
+          discourseNode.disc = "AFTER";
+          discourseNode.type = "D";
+          add_edge arc: event->discourseNode;
+          add_edge arc2: discourseNode->event2;
+          del_node conceptNode
+      }
+  }
+
+  rule link_narration_bare {
+      pattern {
+          conceptNode [concept="then"];
+          node -[time]-> conceptNode;
+          event [type="S"];
+          event -[link]-> node
+      }
+      without { conceptNode -[^anchor]-> * }
+      commands {
+          add_node event2;
+          event2.event = "__S__";
+          event2.type = "S";
+          event2.src = "link_narration_bare";
+          add_node discourseNode;
+          discourseNode.disc = "NARRATION";
+          discourseNode.type = "D";
+          add_edge arc: event2->discourseNode;
+          add_edge arc2: discourseNode->event;
+          del_node conceptNode
+      }
+  }
+}

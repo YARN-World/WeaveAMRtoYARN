@@ -1,0 +1,149 @@
+package quantification_draft {
+  % The comparator quantifiers again, built in two steps instead of one.
+  %
+  % Same triggers and same quantity value as their counterparts in the
+  % quantification package. What differs is the hyperedge: rather than
+  % attaching it to the slot it belongs under, each rule leaves a draft —
+  % carrying its value and the edge to what it scopes over, but hanging under
+  % nothing. hyperedge_draft finishes the job later.
+  %
+  % The point is to stop this package reaching across into another layer's
+  % slots. The one-step version has to match the degree and modification
+  % slots from inside the quantification package, and fails silently when
+  % they are absent: no hyperedge gets built, and the quantity is lost with
+  % it. Drafting the hyperedge separates "what this layer knows" from "where
+  % it ends up", so a missing slot costs at most the hyperedge.
+  %
+  % Runs immediately before the quantification package and consumes the
+  % subtree, so the one-step rules never match. Everything else in that
+  % package behaves as usual.
+
+  % Comparators whose word survives intact.
+  rule stage_degree_same {
+      pattern {
+          node -[quant]-> conceptNode;
+          conceptNode [concept="at-least"|"at-most"|"about"];
+          conceptNode -[op1]-> node2;
+          event [type="S"];
+          event -[link]-> node;
+          quantSlot [feat="quant", type="F"]; event -> quantSlot
+      }
+      without { node -[unit]-> node3 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node2.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> node;
+          add_node node4;
+          node4.value = conceptNode.concept; node4.type = "Hp"; node4.feat = "degree";
+          add_edge arc3: node4 -> quantValue;
+          del_node conceptNode;
+          del_node node2
+      }
+  }
+
+  % Comparators written with a suffix, which is dropped: "more".
+  rule stage_degree_more {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="more-than"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"]; event -> quantSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node node3;
+          node3.value = "more"; node3.type = "Hp"; node3.feat = "degree";
+          add_edge arc3: node3 -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % The same, the other way: "less".
+  rule stage_degree_less {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="less-than"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"]; event -> quantSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node node3;
+          node3.value = "less"; node3.type = "Hp"; node3.feat = "degree";
+          add_edge arc3: node3 -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % A focus particle rather than a comparison, so the draft is a
+  % modification.
+  rule stage_modifier {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="only"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"]; event -> quantSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node node3;
+          node3.value = conceptNode.concept; node3.type = "Hp"; node3.feat = "mod";
+          add_edge arc3: node3 -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % "How tall are you?" — the quantity is what is being asked for.
+  %
+  % So the quantity is left empty rather than filled with the marker itself,
+  % and a drafted question hyperedge is put over it. Getting there requires
+  % running ahead of the quantification package, which would otherwise turn
+  % the marker into a literal value; by the time the question layer runs
+  % there would be nothing left for it to see.
+  rule stage_unknown {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="amr-unknown"|"amr_unknown"];
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"]; event -> quantSlot
+      }
+      without { predicate -[unit]-> node }
+      commands {
+          add_node quantValue;
+          quantValue.value = "_"; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node node2;
+          node2.value = "wh-"; node2.type = "Hp"; node2.feat = "question";
+          add_edge arc3: node2 -> quantValue;
+          del_node conceptNode
+      }
+  }
+}

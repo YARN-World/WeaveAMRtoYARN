@@ -1,0 +1,103 @@
+package location {
+  rule mark_location_with_unit {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          predicate -[location]-> conceptNode;
+          conceptNode -[op1]->node;
+          locSlot [feat="loc", type="F"];
+          event -> locSlot
+      }
+      without {
+          conceptNode -[op2]->*
+      }
+      without {
+          conceptNode [concept="relative-position"]
+      }
+      commands {
+          add_node locValue;
+          locValue.value = conceptNode.concept;
+          locValue.type = "L";
+          locValue.feat = locSlot.feat;
+          add_edge arc: locSlot->locValue;
+          add_edge arc2: locValue->node;
+          del_node conceptNode
+      }
+  }
+
+  rule mark_location_relative {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          arc: predicate -[location]-> conceptNode;
+          conceptNode [concept = "relative-position"];
+          locSlot [feat="loc", type="F"];
+          event -> locSlot
+      }
+      commands {
+          add_node locValue;
+          locValue.value = "_";
+          locValue.type = "L";
+          locValue.feat = locSlot.feat;
+          add_edge arc2: locSlot->locValue;
+          add_edge arc3: locValue->conceptNode;
+          del_edge arc
+      }
+  }
+
+  rule mark_location_bare {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          arc: predicate -[location]-> node;
+          locSlot [feat="loc", type="F"];
+          event -> locSlot
+      }
+      without {
+          node -[op1]->*
+      }
+      without {
+          node -[anchor]-> node2;
+          node2 -[case]-> token;
+          token [upos="ADP"];
+      }
+      commands {
+          add_node locValue;
+          locValue.value = "_";
+          locValue.type = "L";
+          locValue.feat = locSlot.feat;
+          add_edge arc2: locSlot->locValue;
+          add_edge arc3: locValue->node;
+          del_edge arc
+      }
+  }
+
+  rule mark_location_adposition {
+      pattern {
+          predicate [pred];
+          event [type="S"];
+          event -[link]-> predicate;
+          arc: predicate -[location]-> node;
+          node -[anchor]-> node2;
+          node2 -[case]-> token;
+          token [upos="ADP"];
+          locSlot [feat="loc", type="F"];
+          event -> locSlot
+      }
+      without {
+          node -[op1]->*
+      }
+      commands {
+          add_node locValue;
+          locValue.value = token.lemma;
+          locValue.type = "L";
+          locValue.feat = locSlot.feat;
+          add_edge arc2: locSlot->locValue;
+          add_edge arc3: locValue->node;
+          del_edge arc
+      }
+  }
+}

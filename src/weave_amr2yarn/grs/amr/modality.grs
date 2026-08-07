@@ -1,0 +1,479 @@
+package modality {
+  rule open_possibility {
+      pattern {
+          event [type="S"];
+          predicate [pred="possible-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot
+      }
+      %without {
+      %    *->X
+      %}
+      without{
+          modalValue [value="possibility", type="L"];
+          modalSlot->modalValue;
+          modalValue->node
+      }
+      commands {
+          add_node modalValue;
+          modalValue.value = "possibility";
+          modalValue.type = "L";
+          modalValue.feat = modalSlot.feat;
+          add_edge arc:modalSlot->modalValue;
+          add_edge arc2:modalValue->node;
+      }
+  }
+
+  rule extend_possibility_value {
+      pattern {
+          event [type="S"];
+          predicate [pred="possible-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          layerValue2 [type="L"];
+          arc:layerValue2->predicate
+      }
+      commands {
+          add_edge arc2:layerValue2->layerValue;
+          arc2.label = arc.label;
+          layerValue2.type = "H";
+          del_edge arc
+      }
+  }
+
+  rule extend_possibility_node {
+      pattern {
+          event [type="S"];
+          predicate [pred="possible-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          amrNode [type="V"];
+          arc:amrNode->predicate
+      }
+      commands {
+          add_edge arc2:amrNode->node;
+          arc2.label = arc.label;
+          del_edge arc
+      }
+  }
+
+  rule close_possibility_clause {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="possible-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          event2 [type="S"];
+          amrNode [type="V"];
+          event2-[link]->amrNode;
+          arc:amrNode->layerValue
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          add_node clauseNode;
+          clauseNode.rel = arc.1;
+          clauseNode.type = "C";
+          add_edge arc2:amrNode->clauseNode;
+          add_edge arc3:clauseNode->event;
+          del_edge arc;
+          del_node predicate
+      }
+  }
+
+  rule close_possibility {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="possible-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          del_node predicate
+      }
+  }
+
+  rule open_advisability {
+      pattern {
+          event [type="S"];
+          predicate [pred="recommend-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot
+      }
+      %without {
+      %    *->X
+      %}
+      without{
+          modalValue [value="necessity", type="L"];
+          modalSlot->modalValue;
+          modalValue->node
+      }
+      commands {
+          add_node modalValue;
+          modalValue.value = "necessity";
+          modalValue.type = "L";
+          modalValue.feat = modalSlot.feat;
+          add_edge arc:modalSlot->modalValue;
+          add_edge arc2:modalValue->node;
+      }
+  }
+
+  rule extend_advisability_value {
+      pattern {
+          event [type="S"];
+          predicate [pred="recommend-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          layerValue2 [type="L"];
+          arc:layerValue2->predicate
+      }
+      commands {
+          add_edge arc2:layerValue2->layerValue;
+          arc2.label = arc.label;
+          layerValue2.type = "H";
+          del_edge arc
+      }
+  }
+
+  rule extend_advisability_node {
+      pattern {
+          event [type="S"];
+          predicate [pred="recommend-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          amrNode [type="V"];
+          arc:amrNode->predicate
+      }
+      commands {
+          add_edge arc2:amrNode->layerValue;
+          arc2.label = arc.label;
+          del_edge arc
+      }
+  }
+
+  rule close_advisability_clause {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="recommend-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          event2 [type="S"];
+          amrNode [type="V"];
+          event2-[link]->amrNode;
+          arc:amrNode->node
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          add_node clauseNode;
+          clauseNode.rel = arc.1;
+          clauseNode.type = "C";
+          add_edge arc2:amrNode->clauseNode;
+          add_edge arc3:clauseNode->event;
+          del_edge arc;
+          del_node predicate
+      }
+  }
+
+  rule close_advisability {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="recommend-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          del_node predicate
+      }
+  }
+
+  rule open_obligation {
+      pattern {
+          event [type="S"];
+          predicate [pred="obligate-01"];
+          event-[link]->predicate;
+          predicate -[ARG2]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot
+      }
+      %without {
+      %    *->X
+      %}
+      without{
+          modalValue [value="necessity", type="L"];
+          modalSlot->modalValue;
+          modalValue->node
+      }
+      commands {
+          add_node modalValue;
+          modalValue.value = "necessity";
+          modalValue.type = "L";
+          modalValue.feat = modalSlot.feat;
+          add_edge arc:modalSlot->modalValue;
+          add_edge arc2:modalValue->node;
+      }
+  }
+
+  rule extend_obligation_value {
+      pattern {
+          event [type="S"];
+          predicate [pred="obligate-01"];
+          event-[link]->predicate;
+          predicate -[ARG2]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          layerValue2 [type="L"];
+          arc:layerValue2->predicate
+      }
+      commands {
+          add_edge arc2:layerValue2->layerValue;
+          arc2.label = arc.label;
+          layerValue2.type = "H";
+          del_edge arc
+      }
+  }
+
+  rule extend_obligation_node {
+      pattern {
+          event [type="S"];
+          predicate [pred="obligate-01"];
+          event-[link]->predicate;
+          predicate -[ARG2]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          amrNode [type="V"];
+          arc:amrNode->predicate
+      }
+      commands {
+          add_edge arc2:amrNode->layerValue;
+          arc2.label = arc.label;
+          del_edge arc
+      }
+  }
+
+
+  rule close_obligation_clause {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="obligate-01"];
+          event-[link]->predicate;
+          predicate -[ARG2]-> node;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          event2 [type="S"];
+          amrNode [type="V"];
+          event2-[link]->amrNode;
+          arc:amrNode->node
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          add_node clauseNode;
+          clauseNode.rel = arc.1;
+          clauseNode.type = "C";
+          add_edge arc2:amrNode->clauseNode;
+          add_edge arc3:clauseNode->event;
+          del_edge arc;
+          del_node predicate
+      }
+  }
+
+  rule open_permission {
+      pattern {
+          event [type="S"];
+          predicate [pred="permit-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot
+      }
+      without{
+          modalValue [value="possibility", type="L"];
+          modalSlot->modalValue;
+          modalValue->node
+      }
+      commands {
+          add_node modalValue;
+          modalValue.value = "possibility";
+          modalValue.type = "L";
+          modalValue.feat = modalSlot.feat;
+          add_edge arc:modalSlot->modalValue;
+          add_edge arc2:modalValue->node;
+      }
+  }
+
+  rule extend_permission_value {
+      pattern {
+          event [type="S"];
+          predicate [pred="permit-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          layerValue2 [type="L"];
+          arc:layerValue2->predicate
+      }
+      commands {
+          add_edge arc2:layerValue2->layerValue;
+          arc2.label = arc.label;
+          layerValue2.type = "H";
+          del_edge arc
+      }
+  }
+
+  rule extend_permission_node {
+      pattern {
+          event [type="S"];
+          predicate [pred="permit-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          amrNode [type="V"];
+          arc:amrNode->predicate
+      }
+      commands {
+          add_edge arc2:amrNode->node;
+          arc2.label = arc.label;
+          del_edge arc
+      }
+  }
+
+  rule close_permission_clause {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="permit-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node;
+          event2 [type="S"];
+          amrNode [type="V"];
+          event2-[link]->amrNode;
+          arc:amrNode->layerValue
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          add_node clauseNode;
+          clauseNode.rel = arc.1;
+          clauseNode.type = "C";
+          add_edge arc2:amrNode->clauseNode;
+          add_edge arc3:clauseNode->event;
+          del_edge arc;
+          del_node predicate
+      }
+  }
+
+  rule close_permission {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="permit-01"];
+          event-[link]->predicate;
+          predicate -[ARG1]-> node;
+          layerValue [value="possibility", type="L"];
+          modalSlot->layerValue;
+          layerValue->node
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          del_node predicate
+      }
+  }
+
+  rule close_obligation {
+      pattern {
+          event [type="S"];
+          modalSlot [feat="modal", type="F"];
+          event->modalSlot;
+          predicate [pred="obligate-01"];
+          event-[link]->predicate;
+          predicate -[ARG2]-> node;
+          layerValue [value="necessity", type="L"];
+          modalSlot->layerValue;
+          layerValue->node
+      }
+      without {
+          *-[^link]->predicate
+      }
+      commands {
+          del_node predicate
+      }
+  }
+}

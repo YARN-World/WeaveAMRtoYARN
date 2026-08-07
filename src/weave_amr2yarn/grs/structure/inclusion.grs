@@ -1,0 +1,45 @@
+package inclusion {
+  rule attach_membership_localized {
+      pattern {
+          amrNode [pred="include-91", type="V"];
+          arc: amrNode -[ARG1]-> node;
+          arc2: amrNode -[ARG2]-> node2;
+          event [type="S"];
+          arc3: event -[link]-> amrNode
+      }
+      commands {
+          add_node inclusionNode;
+          inclusionNode.type = "I";
+          inclusionNode.irel = "belong";
+          del_edge arc;
+          del_edge arc2;
+          del_edge arc3;
+          add_edge arc4: node -> inclusionNode;
+          add_edge arc5: inclusionNode -> node2;
+          add_edge event -[link]-> node;
+          del_node amrNode;
+      }
+  }
+
+  rule attach_membership {
+      pattern {
+          amrNode [pred="include-91", type="V"];
+          arc: amrNode -[ARG1]-> node;
+          arc2: amrNode -[ARG2]-> node2;
+      }
+      without {
+          event [type="S"];
+          event -[link]-> amrNode
+      }
+      commands {
+          add_node inclusionNode;
+          inclusionNode.type = "I";
+          inclusionNode.irel = "belong";
+          del_edge arc;
+          del_edge arc2;
+          add_edge arc3: node -> inclusionNode;
+          add_edge arc4: inclusionNode -> node2;
+          del_node amrNode;
+      }
+  }
+}

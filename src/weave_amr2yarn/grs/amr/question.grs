@@ -1,0 +1,119 @@
+package question {
+  rule ask_polar {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[polarity]->conceptNode;
+          conceptNode [concept = "amr-unknown"|"amr_unknown"];
+          questionSlot [feat="question", type="F"];
+          event->questionSlot
+      }
+      commands {
+          add_node questionValue;
+          questionValue.value = "yes/no";
+          questionValue.type = "L";
+          questionValue.feat = questionSlot.feat;
+          add_edge arc: questionSlot->questionValue;
+          add_edge arc2: questionValue->node;
+          del_node conceptNode
+      }
+  }
+
+  rule ask_truth_value {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[polarity]->conceptNode;
+          conceptNode [concept = "truth-value"];
+          arc:node2 -> conceptNode;
+          questionSlot [feat="question", type="F"];
+          event->questionSlot
+      }
+      commands {
+          add_node questionValue;
+          questionValue.value = "yes/no";
+          questionValue.type = "L";
+          questionValue.feat = questionSlot.feat;
+          add_edge arc2: questionSlot->questionValue;
+          add_edge arc3: questionValue->node;
+          add_edge arc4: node2->node;
+          arc4.label = arc.label;
+          del_node conceptNode
+      }
+  }
+
+  rule ask_content {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -> conceptNode;
+          conceptNode [concept="amr-unknown"|"amr_unknown"];
+          questionSlot [feat="question", type="F"];
+          event->questionSlot
+      }
+      without {
+          node-[polarity]->conceptNode
+      }
+      commands {
+          add_node questionValue;
+          questionValue.value = "wh-";
+          questionValue.type = "L";
+          questionValue.feat = questionSlot.feat;
+          add_edge arc: questionSlot->questionValue;
+          add_edge arc2: questionValue->conceptNode;
+          conceptNode.concept = "_";
+      }
+  }
+
+  rule ask_reason {
+      pattern {
+          predicate [pred="cause-01"];
+          predicate -[ARG1]-> node;
+          conceptNode [concept="amr-unknown"|"amr_unknown"];
+          predicate -[ARG0]-> conceptNode
+      }
+      commands {
+          del_node predicate;
+          add_edge node-[cause]->conceptNode
+      }
+  }
+
+  rule ask_confirmation {
+      pattern {
+          event [type="S"];
+          questionSlot [feat="question", type="F"];
+          event->questionSlot;
+          event -[link]-> node;
+          predicate [pred="request-confirmation-91"];
+          predicate -[ARG1]-> node
+      }
+      commands {
+          add_node questionValue;
+          questionValue.value = "confirmation-request";
+          questionValue.type = "L";
+          questionValue.feat = questionSlot.feat;
+          add_edge arc: questionSlot->questionValue;
+          add_edge arc2: questionValue->node;
+          del_node predicate
+      }
+  }
+
+  rule ask_alternative {
+      pattern {
+          event [type="S"];
+          questionSlot [feat="question", type="F"];
+          event->questionSlot;
+          conceptNode [concept="amr-choice"];
+          event -[link]-> conceptNode;
+      }
+      commands {
+          add_node questionValue;
+          questionValue.value = "disjunctive";
+          questionValue.type = "L";
+          questionValue.feat = questionSlot.feat;
+          add_edge arc: questionSlot->questionValue;
+          add_edge arc2: questionValue->conceptNode;
+          conceptNode.concept = "or"
+      }
+  }
+}

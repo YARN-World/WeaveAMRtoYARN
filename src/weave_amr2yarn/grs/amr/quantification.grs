@@ -1,0 +1,646 @@
+package quantification {
+  rule bind_universal {
+      pattern {
+          event [type="S"];
+          numSlot [feat="num", type="F"];
+          event -> numSlot;
+          layerValue [value="singular", type="L"];
+          numSlot -> layerValue;
+          layerValue -> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="every"|"each"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->node
+      }
+      without {
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"]
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "forall";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc:quantSlot -> quantValue;
+          add_edge arc2:quantValue -> node;
+          del_node conceptNode
+      }
+  }
+
+  % "not every", "not each" — a polarity marker on the quantifier itself.
+  %
+  % The negation has to land on the new universal node before the old one
+  % goes, or it ends up inside the scope instead of over it: ¬∀, not ∀¬.
+  rule bind_universal_negated {
+      pattern {
+          event [type="S"];
+          numSlot [feat="num", type="F"];
+          event -> numSlot;
+          layerValue [value="singular", type="L"];
+          numSlot -> layerValue;
+          layerValue -> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="every"|"each"];
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot;
+          negSlot [feat="neg", type="F"];
+          event -> negSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->node
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "forall";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc:quantSlot -> quantValue;
+          add_edge arc2:quantValue -> node;
+          add_node hyperedge;
+          hyperedge.value = "_";
+          hyperedge.type = "H";
+          hyperedge.feat = negSlot.feat;
+          add_edge arc3:negSlot -> hyperedge;
+          add_edge arc4:hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node conceptNode2
+      }
+  }
+
+  rule bind_universal_all {
+      pattern {
+          event [type="S"];
+          numSlot [feat="num", type="F"];
+          event -> numSlot;
+          layerValue [value="plural"|"mass"|"singular,mass", type="L"];
+          numSlot -> layerValue;
+          layerValue -> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="all"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->node
+      }
+      without {
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"]
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "forall";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc:quantSlot -> quantValue;
+          add_edge arc2:quantValue -> node;
+          del_node conceptNode
+      }
+  }
+
+  % "not all" — the same, where the quantifier is written as "all".
+  rule bind_universal_all_negated {
+      pattern {
+          event [type="S"];
+          numSlot [feat="num", type="F"];
+          event -> numSlot;
+          layerValue [value="plural"|"mass"|"singular,mass", type="L"];
+          numSlot -> layerValue;
+          layerValue -> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="all"];
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot;
+          negSlot [feat="neg", type="F"];
+          event -> negSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->node
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "forall";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc:quantSlot -> quantValue;
+          add_edge arc2:quantValue -> node;
+          add_node hyperedge;
+          hyperedge.value = "_";
+          hyperedge.type = "H";
+          hyperedge.feat = negSlot.feat;
+          add_edge arc3:negSlot -> hyperedge;
+          add_edge arc4:hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node conceptNode2
+      }
+  }
+
+  % Proportional quantifiers keep their word rather than being forced into
+  % one of the two logical shapes: "few", "several", "many" and "most" say
+  % something no existential or universal captures. It runs ahead of the
+  % existential default, which would otherwise claim them first.
+  rule bind_by_lemma {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="few"|"several"|"many"|"most"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->node
+      }
+      without {
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"]
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = conceptNode.concept;
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> node;
+          del_edge node -[mod]-> conceptNode
+      }
+  }
+
+  % The same under negation — "not many" — with the negation scoping the
+  % quantifier rather than sitting inside it.
+  rule bind_by_lemma_negated {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept="few"|"several"|"many"|"most"];
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot;
+          negSlot [feat="neg", type="F"];
+          event -> negSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->node
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = conceptNode.concept;
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> node;
+          add_node hyperedge;
+          hyperedge.value = "_";
+          hyperedge.type = "H";
+          hyperedge.feat = negSlot.feat;
+          add_edge arc3: negSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_edge node -[mod]-> conceptNode;
+          del_node conceptNode2
+      }
+  }
+
+  rule bind_existential {
+      pattern {
+          event [type="S"];
+          numSlot [feat="num", type="F"];
+          event -> numSlot;
+          layerValue [type="L"];
+          numSlot -> layerValue;
+          layerValue -> conceptNode;
+          conceptNode [!nonref];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot;
+      }
+      without {
+          conceptNode -[quant]-> node
+      }
+      % Not a node that is itself somebody's quantity — the "lot" in "a lot
+      % of people". Those are consumed further down; quantifying them here
+      % leaves an edge pointing at a node that is about to be deleted.
+      without {
+          * -[quant]-> conceptNode
+      }
+      without {
+          conceptNode [concept="i"|"you"|"he"|"she"|"it"|"we"|"they"]
+      }
+      without {
+          conceptNode -[mod]-> conceptNode2;
+          conceptNode2 [concept="every"|"each"|"all"|"few"|"several"|"many"|"most"]
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->conceptNode
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "exists";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc:quantSlot -> quantValue;
+          add_edge arc2:quantValue -> conceptNode
+      }
+  }
+
+  rule bind_measure_unit {
+      pattern {
+          node -[quant]-> conceptNode;
+          node -[unit]-> node2;
+          event [type="S"];
+          event -[link]-> node;
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      % The unknown marker asks a question, it does not state a quantity, so
+      % it must never become one. The question layer owns it.
+      without {
+          conceptNode [concept="amr-unknown"|"amr_unknown"]
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = conceptNode.concept;
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot->quantValue;
+          add_edge arc2: quantValue->node2;
+          del_node conceptNode
+      }
+  }
+
+  % A quantity written as "every", "each", "all" or "some" means the same as
+  % the modifier spelling of it, so it gets the same value — otherwise the
+  % output would depend on which of the two AMR uses. Words with no logical
+  % reading, and plain numbers, fall through to the general rule below.
+  rule bind_plain_universal {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="every"|"each"|"all"];
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          predicate -[unit]-> node;
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "forall";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot->quantValue;
+          add_edge arc2: quantValue->predicate;
+          del_node conceptNode
+      }
+  }
+
+  rule bind_plain_existential {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="some"];
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          predicate -[unit]-> node;
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = "exists";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot->quantValue;
+          add_edge arc2: quantValue->predicate;
+          del_node conceptNode
+      }
+  }
+
+  % Quantities with a comparator: "more than five donors".
+  %
+  % AMR nests the number under an operator node. That splits into two pieces
+  % here — the number becomes the quantity on the entity, and the operator
+  % becomes a hyperedge scoping over it. Which hyperedge depends on the
+  % operator: a comparison is a degree, while a focus or totality particle is
+  % a modification.
+  %
+  % The comparative suffix is dropped, so the value is the bare word.
+
+  % Comparators whose word survives intact.
+  rule bind_plain_degree_same {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="at-least"|"at-most"|"about"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot  [feat="quant",  type="F"]; event -> quantSlot;
+          degreeSlot [feat="degree", type="F"]; event -> degreeSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node hyperedge;
+          hyperedge.value = conceptNode.concept; hyperedge.type = "H"; hyperedge.feat = degreeSlot.feat;
+          add_edge arc3: degreeSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % Comparators written with a suffix, which is dropped: "more".
+  rule bind_plain_degree_more {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="more-than"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot  [feat="quant",  type="F"]; event -> quantSlot;
+          degreeSlot [feat="degree", type="F"]; event -> degreeSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node hyperedge;
+          hyperedge.value = "more"; hyperedge.type = "H"; hyperedge.feat = degreeSlot.feat;
+          add_edge arc3: degreeSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % The same, the other way: "less".
+  rule bind_plain_degree_less {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="less-than"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot  [feat="quant",  type="F"]; event -> quantSlot;
+          degreeSlot [feat="degree", type="F"]; event -> degreeSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node hyperedge;
+          hyperedge.value = "less"; hyperedge.type = "H"; hyperedge.feat = degreeSlot.feat;
+          add_edge arc3: degreeSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % A focus particle rather than a comparison, so the hyperedge is a
+  % modification.
+  rule bind_plain_modifier {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="only"];
+          conceptNode -[op1]-> node;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"]; event -> quantSlot;
+          modSlot   [feat="mod",   type="F"]; event -> modSlot
+      }
+      without { predicate -[unit]-> node2 }
+      commands {
+          add_node quantValue;
+          quantValue.value = node.concept; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node hyperedge;
+          hyperedge.value = conceptNode.concept; hyperedge.type = "H"; hyperedge.feat = modSlot.feat;
+          add_edge arc3: modSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node node
+      }
+  }
+
+  % "How tall are you?" — the quantity is what is being asked for.
+  %
+  % So the quantity is left empty on the entity and a question hyperedge is
+  % put over it. This consumes the marker, which is why the question
+  % layer never sees this shape; the two general rules below carry a guard
+  % against the same marker, so it is never turned into a literal value.
+  %
+  % The staged package builds the same thing in two steps.
+  rule bind_unknown {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode [concept="amr-unknown"|"amr_unknown"];
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot    [feat="quant",    type="F"]; event -> quantSlot;
+          questionSlot [feat="question", type="F"]; event -> questionSlot
+      }
+      without { predicate -[unit]-> node }
+      commands {
+          add_node quantValue;
+          quantValue.value = "_"; quantValue.type = "L"; quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> predicate;
+          add_node hyperedge;
+          hyperedge.value = "wh-"; hyperedge.type = "H"; hyperedge.feat = questionSlot.feat;
+          add_edge arc3: questionSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_node conceptNode
+      }
+  }
+
+  rule bind_plain {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          conceptNode [concept=re".*-quantity"]
+      }
+      without {
+          conceptNode [concept="every"|"each"|"all"|"some"]
+      }
+      without {
+          conceptNode -[op1]-> node
+      }
+      without {
+          predicate -[unit]-> node2;
+      }
+      without {
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"]
+      }
+      % The unknown marker asks a question, it does not state a quantity, so
+      % it must never become one. The question layer owns it.
+      without {
+          conceptNode [concept="amr-unknown"|"amr_unknown"]
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = conceptNode.concept;
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot->quantValue;
+          add_edge arc2: quantValue->predicate;
+          del_node conceptNode
+      }
+  }
+
+  % The general case under negation — "not many dogs", where the polarity
+  % marker sits on the quantity rather than the predicate.
+  rule bind_plain_negated {
+      pattern {
+          predicate [pred]|[concept];
+          predicate -[quant]-> conceptNode;
+          conceptNode -[polarity]-> conceptNode2;
+          conceptNode2 [concept="-"];
+          event [type="S"];
+          event -[link]-> predicate;
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot;
+          negSlot [feat="neg", type="F"];
+          event -> negSlot
+      }
+      without {
+          conceptNode [concept=re".*-quantity"]
+      }
+      without {
+          conceptNode [concept="every"|"each"|"all"|"some"]
+      }
+      without {
+          conceptNode -[op1]-> node
+      }
+      without {
+          predicate -[unit]-> node2;
+      }
+      commands {
+          add_node quantValue;
+          quantValue.value = conceptNode.concept;
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot->quantValue;
+          add_edge arc2: quantValue->predicate;
+          add_node hyperedge;
+          hyperedge.value = "_";
+          hyperedge.type = "H";
+          hyperedge.feat = negSlot.feat;
+          add_edge arc3: negSlot -> hyperedge;
+          add_edge arc4: hyperedge -> quantValue;
+          del_node conceptNode;
+          del_node conceptNode2
+      }
+  }
+
+  % Quantifier pronouns.
+  %
+  % "Everyone" is a quantified person, so it becomes exactly that: a person
+  % node carrying a universal, and nothing else — no definiteness, no
+  % number.
+  % "someone" and "somebody" take the same shape with an existential.
+  %
+  % Neither needs a negated variant. These rules do not exclude a polarity
+  % marker, so the negation layer — which runs afterwards — puts the negation
+  % over the quantifier that was just built, and its own general rule stands
+  % aside once it sees one there.
+  %
+  % Running this late, after definiteness and number, is deliberate: those
+  % two saw a pronoun and rightly did nothing with it, and would have had to
+  % be taught to ignore the noun this rule invents.
+  %
+  % "anyone" and "nobody" are left alone. They scope differently.
+
+  rule bind_universal_person {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="everyone"|"everybody"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->conceptNode
+      }
+      commands {
+          conceptNode.concept = "person";
+          add_node quantValue;
+          quantValue.value = "forall";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> conceptNode
+      }
+  }
+
+  rule bind_existential_person {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="someone"|"somebody"];
+          quantSlot [feat="quant", type="F"];
+          event -> quantSlot
+      }
+      without {
+          quantValue [feat="quant", type="L"];
+          quantSlot->quantValue;
+          quantValue->conceptNode
+      }
+      commands {
+          conceptNode.concept = "person";
+          add_node quantValue;
+          quantValue.value = "exists";
+          quantValue.type = "L";
+          quantValue.feat = quantSlot.feat;
+          add_edge arc: quantSlot -> quantValue;
+          add_edge arc2: quantValue -> conceptNode
+      }
+  }
+}

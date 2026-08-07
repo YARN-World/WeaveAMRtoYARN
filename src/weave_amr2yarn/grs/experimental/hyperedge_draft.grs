@@ -1,0 +1,59 @@
+package hyperedge_draft {
+  % Finishing the hyperedges an earlier layer left half-built.
+  %
+  % A draft hyperedge already carries its value and the edge to what it
+  % scopes over, but hangs under no slot. All that is left is mechanical:
+  % find the slot of the same kind belonging to the event that owns the
+  % target, hang the hyperedge under it, and mark it finished.
+  %
+  % Neither half of that is written into the rule. It never asks which layer
+  % built the draft, and it reads the kind of slot to look for off the draft
+  % itself, so a new layer can emit drafts without changing anything here.
+  %
+  % Drafts stacked on top of each other — a negation over a degree over a
+  % quantifier — resolve from the inside out under Onf, because finishing the
+  % inner one creates the very edge the outer one is waiting for.
+  %
+  % A finished graph should hold no drafts at all. Rather than delete a draft
+  % that can never be resolved, the second rule marks it, so the failure is
+  % visible in the output instead of quietly disappearing.
+  %
+  % Runs to a fixed point, before hyperedges.
+
+  rule resolve_pending_hyperedge {
+      pattern {
+          node [type="Hp"];
+          node -> node2;
+          slot [type="F"];
+          slot -> node2;
+          event [type="S"];
+          event -> slot;
+          slot2 [type="F"];
+          event -> slot2;
+          slot2.feat = node.feat
+      }
+      commands {
+          add_edge arc: slot2 -> node;
+          node.type = "H"
+      }
+  }
+
+  rule resolve_pending_hyperedge_orphan {
+      pattern {
+          node [type="Hp", !link_error]
+      }
+      without {
+          node -> node2;
+          slot [type="F"];
+          slot -> node2;
+          event [type="S"];
+          event -> slot;
+          slot2 [type="F"];
+          event -> slot2;
+          slot2.feat = node.feat
+      }
+      commands {
+          node.link_error = "no_layer"
+      }
+  }
+}

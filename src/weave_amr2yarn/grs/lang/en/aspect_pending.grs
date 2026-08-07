@@ -1,0 +1,42 @@
+package aspect_pending {
+  % A marker for the aspect this rule set could not work out.
+  %
+  % Runs after the aspect layer and fills any still-empty aspect slot
+  % on a verbal predicate with a placeholder, so an unanalysed verb is
+  % visibly unanalysed rather than silently bare. Requiring a verb keeps it
+  % off copular structures, whose predicate is an adjective or a noun and
+  % whose state reading the aspect layer has already written.
+  %
+  % tense_pending does the same for tense. Both placeholders are stripped
+  % again by finalize_eval when the output is being scored.
+  rule fill_empty_aspect {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[anchor]-> token;
+          token [upos="VERB"];
+          aspectSlot [feat="aspect", type="F"];
+          event->aspectSlot;
+          % Only where the tense layer got somewhere, so the placeholder
+          % marks a gap in the aspect analysis rather than an unread verb.
+          tempSlot [feat="temp", type="F"];
+          event -> tempSlot;
+          tempValue [feat="temp", type="L"];
+          tempSlot -> tempValue;
+          tempValue -> node
+      }
+      without {
+          aspectValue [feat="aspect", type="L"];
+          aspectSlot->aspectValue;
+          aspectValue->node
+      }
+      commands {
+          add_node aspectValue;
+          aspectValue.value = "todo";
+          aspectValue.type = "L";
+          aspectValue.feat = aspectSlot.feat;
+          add_edge arc:aspectSlot->aspectValue;
+          add_edge arc2:aspectValue->node
+      }
+  }
+}

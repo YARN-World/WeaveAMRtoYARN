@@ -1,0 +1,342 @@
+package skeleton {
+  rule open_event_frame {
+      without {
+          event [type = "S"]
+      }
+      commands {
+          add_node event;
+          event.event = "S1";
+          event.type = "S";
+          event.src = "open_event_frame";
+      }
+  }
+
+  % Also gives the concept its event link.
+  rule bind_focus_concept {
+      pattern {
+          event [event="S1", type="S"];
+          focusSlot [feat="focus", type="F"];
+          event -> focusSlot;
+          conceptNode [concept]
+      }
+      without {
+          *->conceptNode
+      }
+      without {
+          event-[link]->*
+      }
+      commands {
+          add_node focusValue;
+          focusValue.value = "_";
+          focusValue.type = "L";
+          focusValue.feat = focusSlot.feat;
+          add_edge arc:focusSlot->focusValue;
+          add_edge arc2:focusValue->conceptNode;
+          add_edge event-[link]->conceptNode
+      }
+  }
+
+  rule open_tense_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          tempSlot [feat = "temp", type = "F"];
+          event->tempSlot
+      }
+      commands {
+          add_node tempSlot;
+          tempSlot.type = "F";
+          tempSlot.feat = "temp";
+          add_edge arc: event->tempSlot
+      }
+  }
+
+  rule open_aspect_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          aspectSlot [feat = "aspect", type = "F"];
+          event->aspectSlot
+      }
+      commands {
+          add_node aspectSlot;
+          aspectSlot.type = "F";
+          aspectSlot.feat = "aspect";
+          add_edge arc: event->aspectSlot
+      }
+  }
+
+  rule open_quantification_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          quantSlot [feat = "quant", type = "F"];
+          event->quantSlot
+      }
+      commands {
+          add_node quantSlot;
+          quantSlot.type = "F";
+          quantSlot.feat = "quant";
+          add_edge arc: event->quantSlot
+      }
+  }
+
+  rule open_definiteness_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          defSlot [feat = "def", type = "F"];
+          event->defSlot
+      }
+      commands {
+          add_node defSlot;
+          defSlot.type = "F";
+          defSlot.feat = "def";
+          add_edge arc: event->defSlot
+      }
+  }
+
+  rule open_number_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          numSlot [feat = "num", type = "F"];
+          event->numSlot
+      }
+      commands {
+          add_node numSlot;
+          numSlot.type = "F";
+          numSlot.feat = "num";
+          add_edge arc: event->numSlot
+      }
+  }
+
+  rule open_distributivity_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          distrSlot [feat = "distr", type = "F"];
+          event->distrSlot
+      }
+      commands {
+          add_node distrSlot;
+          distrSlot.type = "F";
+          distrSlot.feat = "distr";
+          add_edge arc: event->distrSlot
+      }
+  }
+
+  rule open_modality_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          modalSlot [feat = "modal", type = "F"];
+          event->modalSlot
+      }
+      commands {
+          add_node modalSlot;
+          modalSlot.type = "F";
+          modalSlot.feat = "modal";
+          add_edge arc: event->modalSlot
+      }
+  }
+
+  rule open_negation_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          negSlot [feat = "neg", type = "F"];
+          event->negSlot
+      }
+      commands {
+          add_node negSlot;
+          negSlot.type = "F";
+          negSlot.feat = "neg";
+          add_edge arc: event->negSlot
+      }
+  }
+
+  rule open_modification_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          modSlot [feat = "mod", type = "F"];
+          event->modSlot
+      }
+      commands {
+          add_node modSlot;
+          modSlot.type = "F";
+          modSlot.feat = "mod";
+          add_edge arc: event->modSlot
+      }
+  }
+
+  rule open_deixis_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          deixisSlot [feat = "deixis", type = "F"];
+          event->deixisSlot
+      }
+      commands {
+          add_node deixisSlot;
+          deixisSlot.type = "F";
+          deixisSlot.feat = "deixis";
+          add_edge arc: event->deixisSlot
+      }
+  }
+
+  rule open_location_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          locSlot [feat = "loc", type = "F"];
+          event->locSlot
+      }
+      commands {
+          add_node locSlot;
+          locSlot.type = "F";
+          locSlot.feat = "loc";
+          add_edge arc: event->locSlot
+      }
+  }
+
+  rule open_direction_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          dirSlot [feat = "dir", type = "F"];
+          event->dirSlot
+      }
+      commands {
+          add_node dirSlot;
+          dirSlot.type = "F";
+          dirSlot.feat = "dir";
+          add_edge arc: event->dirSlot
+      }
+  }
+
+  rule open_duration_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          durationSlot [feat = "duration", type = "F"];
+          event->durationSlot
+      }
+      commands {
+          add_node durationSlot;
+          durationSlot.type = "F";
+          durationSlot.feat = "duration";
+          add_edge arc: event->durationSlot
+      }
+  }
+
+  rule open_frequency_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          freqSlot [feat = "freq", type = "F"];
+          event->freqSlot
+      }
+      commands {
+          add_node freqSlot;
+          freqSlot.type = "F";
+          freqSlot.feat = "freq";
+          add_edge arc: event->freqSlot
+      }
+  }
+
+  rule open_manner_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          mannerSlot [feat = "manner", type = "F"];
+          event->mannerSlot
+      }
+      commands {
+          add_node mannerSlot;
+          mannerSlot.type = "F";
+          mannerSlot.feat = "manner";
+          add_edge arc: event->mannerSlot
+      }
+  }
+
+  rule open_degree_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          degreeSlot [feat = "degree", type = "F"];
+          event->degreeSlot
+      }
+      commands {
+          add_node degreeSlot;
+          degreeSlot.type = "F";
+          degreeSlot.feat = "degree";
+          add_edge arc: event->degreeSlot
+      }
+  }
+
+  rule open_question_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          questionSlot [feat = "question", type = "F"];
+          event->questionSlot
+      }
+      commands {
+          add_node questionSlot;
+          questionSlot.type = "F";
+          questionSlot.feat = "question";
+          add_edge arc: event->questionSlot
+      }
+  }
+
+  rule open_mood_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          moodSlot [feat = "mood", type = "F"];
+          event->moodSlot
+      }
+      commands {
+          add_node moodSlot;
+          moodSlot.type = "F";
+          moodSlot.feat = "mood";
+          add_edge arc: event->moodSlot
+      }
+  }
+
+  rule open_focus_slot {
+      pattern {
+          event [type = "S"]
+      }
+      without {
+          focusSlot [feat = "focus", type = "F"];
+          event->focusSlot
+      }
+      commands {
+          add_node focusSlot;
+          focusSlot.type = "F";
+          focusSlot.feat = "focus";
+          add_edge arc: event->focusSlot
+      }
+  }
+}

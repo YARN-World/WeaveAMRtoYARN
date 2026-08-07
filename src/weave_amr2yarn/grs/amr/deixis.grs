@@ -1,0 +1,151 @@
+package deixis {
+  rule index_proximal {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept = "this"|"these"|"here"];
+          deixisSlot [feat="deixis", type="F"];
+          event->deixisSlot
+      }
+      without {
+          * -[mod]-> conceptNode
+      }
+      without {
+          deixisValue [value="spatial:near", type="L"];
+          deixisSlot->deixisValue;
+          deixisValue->conceptNode
+      }
+      commands {
+          add_node deixisValue;
+          deixisValue.value = "spatial:near";
+          deixisValue.type = "L";
+          deixisValue.feat = deixisSlot.feat;
+          add_edge arc:deixisSlot->deixisValue;
+          add_edge arc2:deixisValue->conceptNode;
+          conceptNode.concept = "_";
+      }
+  }
+
+  rule index_proximal_modifier {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept = "this"|"these"|"here"];
+          deixisSlot [feat="deixis", type="F"];
+          event->deixisSlot
+      }
+      without {
+          deixisValue [value="spatial:near", type="L"];
+          deixisSlot->deixisValue;
+          deixisValue->node
+      }
+      commands {
+          add_node deixisValue;
+          deixisValue.value = "spatial:near";
+          deixisValue.type = "L";
+          deixisValue.feat = deixisSlot.feat;
+          add_edge arc:deixisSlot->deixisValue;
+          add_edge arc2:deixisValue->node;
+          del_node conceptNode
+      }
+  }
+
+  rule index_distal {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept = "that"|"those"|"there"];
+          deixisSlot [feat="deixis", type="F"];
+          event->deixisSlot
+      }
+      without {
+          * -[mod]-> conceptNode
+      }
+      without {
+          deixisValue [value="spatial:far", type="L"];
+          deixisSlot->deixisValue;
+          deixisValue->conceptNode
+      }
+      commands {
+          add_node deixisValue;
+          deixisValue.value = "spatial:far";
+          deixisValue.type = "L";
+          deixisValue.feat = deixisSlot.feat;
+          add_edge arc:deixisSlot->deixisValue;
+          add_edge arc2:deixisValue->conceptNode;
+          conceptNode.concept = "_";
+      }
+  }
+
+  rule index_distal_modifier {
+      pattern {
+          event [type="S"];
+          event -[link]-> node;
+          node -[mod]-> conceptNode;
+          conceptNode [concept = "that"|"those"|"there"];
+          deixisSlot [feat="deixis", type="F"];
+          event->deixisSlot
+      }
+      without {
+          deixisValue [value="spatial:far", type="L"];
+          deixisSlot->deixisValue;
+          deixisValue->node
+      }
+      commands {
+          add_node deixisValue;
+          deixisValue.value = "spatial:far";
+          deixisValue.type = "L";
+          deixisValue.feat = deixisSlot.feat;
+          add_edge arc:deixisSlot->deixisValue;
+          add_edge arc2:deixisValue->node;
+          del_node conceptNode
+      }
+  }
+
+  rule index_speaker {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="i"|"we", !id];
+          deixisSlot [feat="deixis", type="F"];
+          event->deixisSlot
+      }
+      without {
+          deixisValue [value="personal:speaker", type="L"];
+          deixisSlot->deixisValue;
+          deixisValue->conceptNode
+      }
+      commands {
+          add_node deixisValue;
+          deixisValue.value = "personal:speaker";
+          deixisValue.type = "L";
+          deixisValue.feat = deixisSlot.feat;
+          add_edge arc:deixisSlot->deixisValue;
+          add_edge arc2:deixisValue->conceptNode
+      }
+  }
+
+  rule index_addressee {
+      pattern {
+          event [type="S"];
+          event -[link]-> conceptNode;
+          conceptNode [concept="you", !id];
+          deixisSlot [feat="deixis", type="F"];
+          event->deixisSlot
+      }
+      without {
+          deixisValue [value="personal:hearer", type="L"];
+          deixisSlot->deixisValue;
+          deixisValue->conceptNode
+      }
+      commands {
+          add_node deixisValue;
+          deixisValue.value = "personal:hearer";
+          deixisValue.type = "L";
+          deixisValue.feat = deixisSlot.feat;
+          add_edge arc:deixisSlot->deixisValue;
+          add_edge arc2:deixisValue->conceptNode
+      }
+  }
+}
