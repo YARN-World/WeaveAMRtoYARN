@@ -19,7 +19,7 @@ from ..errors import MissingDependency, WeaveError
 from ..formats.amr import AmrSentence
 from ..formats.anchors import AnchorDictionary
 
-#: Points at a LEAMR checkout. It is roughly 1.3 GB, so unlike align2anchor
+#: Points at a LEAMR checkout. It is roughly 1.3 GB,
 #: itself it cannot be shipped and has to be found.
 LEAMR_VARIABLE = "WEAVE_LEAMR_DIR"
 

@@ -16,6 +16,7 @@ from .config import ConversionConfig
 from .errors import WeaveError
 from .formats.amr import AmrCorpus
 from .providers.anchors import ChainedAnchorer, LevenshteinAnchorer, PrecomputedAnchorer
+from .providers.parser import DEFAULT_ENDPOINT, MODEL_VARIABLE
 from .providers.ud import ChainedUd, ConlluUd, StanzaUd
 from .resources import bundledGrs
 from .transform.converter import BatchConverter, Converter
@@ -25,6 +26,57 @@ def _mustExist(path: Path, what: str) -> Path:
     if not path.exists():
         raise SystemExit(f"weave: no such {what}: {path}")
     return path
+
+
+def _addConversionOptions(parser: argparse.ArgumentParser) -> None:
+    """Options shared by every command that ends in a conversion."""
+    parser.add_argument("--out", required=True, help="output directory")
+    parser.add_argument("--ud", help="CoNLL-U file; Stanza is used without it")
+    parser.add_argument("--anchors", help="anchor dictionary JSON")
+    parser.add_argument("--grs", help="GRS entry file (default: the bundled rules)")
+    parser.add_argument("--strat", default="eval", help="strategy (default: eval)")
+    parser.add_argument(
+        "--key-snt",
+        default="snt",
+        help="metadata key holding the sentence (default: snt)",
+    )
+    parser.add_argument("--lang", default="en", help="parser language (default: en)")
+    parser.add_argument(
+        "--layout",
+        choices=("flat", "grouped"),
+        default="flat",
+        help="grouped puts a.b at a/b.json (default: flat)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="per-sentence seconds, 0 to disable (default: 30)",
+    )
+    parser.add_argument(
+        "--anchor-threshold",
+        type=float,
+        default=0.7,
+        help="Levenshtein similarity floor (default: 0.7)",
+    )
+    parser.add_argument("--grew-only", action="store_true", help="skip the YARN output")
+    parser.add_argument(
+        "--strict-ud",
+        action="store_true",
+        help="fail sentences missing from --ud instead of parsing them",
+    )
+    parser.add_argument(
+        "--penman-dereify",
+        action="store_true",
+        help="apply the Penman-level -91 dereification before rewriting",
+    )
+    parser.add_argument(
+        "--anchorer",
+        choices=("levenshtein", "leamr"),
+        default="levenshtein",
+        help="how to anchor sentences --anchors does not cover (default: levenshtein)",
+    )
+    _addAlign2AnchorOptions(parser)
 
 
 def _addAlign2AnchorOptions(parser: argparse.ArgumentParser) -> None:
@@ -141,6 +193,64 @@ def runAnchors(args) -> int:
     return 0
 
 
+def _buildParser(args):
+    """The AMR parser named on the command line."""
+    if args.parser == "spring":
+        from .providers.parser import SpringParser
+
+        return SpringParser(args.spring_endpoint), f"SPRING service {args.spring_endpoint}"
+
+    from .providers.parser import AmrlibParser
+
+    parser = AmrlibParser(args.amr_model, device=args.device)
+    return parser, f"amrlib {parser.modelDir}"
+
+
+def runRun(args) -> int:
+    """Parse raw text into AMR, then convert it."""
+    from .providers.parser import parseToCorpus, readSentences
+
+    sentences = readSentences(_mustExist(Path(args.text), "text file"))
+    if not sentences:
+        raise SystemExit(f"weave: no sentences in {args.text}")
+
+    # LEAMR aligns an AMR file against a CoNLL-U file, so parsed text has to be
+    # written out first for it to have anything to read.
+    if args.anchorer == "leamr" and not (args.save_amr and args.ud):
+        raise SystemExit(
+            "weave: --anchorer leamr needs --save-amr and --ud, since it aligns "
+            "files rather than in-memory graphs"
+        )
+
+    parser, description = _buildParser(args)
+    print(f"parser  {description}", file=sys.stderr)
+    print(f"parsing {len(sentences)} sentences", file=sys.stderr)
+    corpus = parseToCorpus(parser, sentences, sentenceKey=args.key_snt)
+
+    if args.save_amr:
+        Path(args.save_amr).write_text(
+            "\n\n".join(sentence.penman for sentence in corpus) + "\n",
+            encoding="utf-8",
+        )
+        print(f"amr     -> {args.save_amr}", file=sys.stderr)
+
+    # Parsed text has no gold UD or anchors, so the converter falls back to
+    # Stanza and Levenshtein unless the caller supplied something.
+    args.amr = args.save_amr or "<parsed>"
+    converter, notes = _buildConverter(args)
+    for note in notes:
+        print(note, file=sys.stderr)
+
+    print(f"converting {len(corpus)} sentences -> {args.out}", file=sys.stderr)
+    report = BatchConverter(converter).run(
+        corpus, args.out, layout=args.layout, grewOnly=args.grew_only
+    )
+    print(report.summary(), file=sys.stderr)
+    for sentenceId, message in report.failures:
+        print(f"  failed  {sentenceId}: {message}", file=sys.stderr)
+    return 1 if report.failures else 0
+
+
 def runConvert(args) -> int:
     corpus = AmrCorpus.fromFile(_mustExist(Path(args.amr), "AMR corpus"))
 
@@ -220,56 +330,33 @@ def buildParser() -> argparse.ArgumentParser:
 
     convert = commands.add_parser("convert", help="convert an AMR corpus to YARN")
     convert.add_argument("--amr", required=True, help="AMR corpus in Penman format")
-    convert.add_argument("--out", required=True, help="output directory")
-    convert.add_argument("--ud", help="CoNLL-U file; Stanza is used without it")
-    convert.add_argument("--anchors", help="anchor dictionary JSON")
-    convert.add_argument("--grs", help="GRS entry file (default: the bundled rules)")
-    convert.add_argument("--strat", default="eval", help="strategy (default: eval)")
-    convert.add_argument(
-        "--key-snt",
-        default="snt",
-        help="metadata key holding the sentence (default: snt)",
-    )
-    convert.add_argument("--lang", default="en", help="parser language (default: en)")
-    convert.add_argument(
-        "--layout",
-        choices=("flat", "grouped"),
-        default="flat",
-        help="grouped puts a.b at a/b.json (default: flat)",
-    )
-    convert.add_argument(
-        "--timeout",
-        type=int,
-        default=30,
-        help="per-sentence seconds, 0 to disable (default: 30)",
-    )
-    convert.add_argument(
-        "--anchor-threshold",
-        type=float,
-        default=0.7,
-        help="Levenshtein similarity floor (default: 0.7)",
-    )
-    convert.add_argument(
-        "--grew-only", action="store_true", help="skip the YARN output"
-    )
-    convert.add_argument(
-        "--strict-ud",
-        action="store_true",
-        help="fail sentences missing from --ud instead of parsing them",
-    )
-    convert.add_argument(
-        "--penman-dereify",
-        action="store_true",
-        help="apply the Penman-level -91 dereification before rewriting",
-    )
-    convert.add_argument(
-        "--anchorer",
-        choices=("levenshtein", "leamr"),
-        default="levenshtein",
-        help="how to anchor sentences --anchors does not cover (default: levenshtein)",
-    )
-    _addAlign2AnchorOptions(convert)
+    _addConversionOptions(convert)
     convert.set_defaults(handler=runConvert)
+
+    run = commands.add_parser(
+        "run", help="parse raw text into AMR, then convert it to YARN"
+    )
+    run.add_argument("--text", required=True, help="one sentence per line")
+    run.add_argument(
+        "--parser",
+        choices=("amrlib", "spring"),
+        default="amrlib",
+        help="amrlib runs in this process; spring talks to a service "
+        "(default: amrlib)",
+    )
+    run.add_argument(
+        "--amr-model",
+        help=f"amrlib model directory, or set {MODEL_VARIABLE}",
+    )
+    run.add_argument(
+        "--spring-endpoint",
+        default=DEFAULT_ENDPOINT,
+        help=f"SPRING service URL (default: {DEFAULT_ENDPOINT})",
+    )
+    run.add_argument("--device", help="torch device for amrlib, e.g. cpu or cuda:0")
+    run.add_argument("--save-amr", help="also write the parsed AMR corpus here")
+    _addConversionOptions(run)
+    run.set_defaults(handler=runRun)
 
     anchors = commands.add_parser(
         "anchors", help="produce an anchor dictionary with align2anchor"

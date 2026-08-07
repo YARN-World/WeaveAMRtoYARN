@@ -1,13 +1,5 @@
 # Installing against a fresh LEAMR
 
-The library itself needs only `penman` (plus `flask` for the viewer and `stanza`
-if you want to parse sentences). The aligner is the awkward part: **LEAMR is not
-pip-installable**, and a naive clone is missing a piece.
-
-Check any checkout before trusting it:
-
-    python -m align2anchor doctor --leamr-dir /path/to/leamr
-
 ## The three-step install
 
     git clone https://github.com/ablodge/leamr
@@ -43,7 +35,7 @@ LEAMR's own `evaluate` package. `LeamrResources.wireImports()` strips that
 directory when it loads for exactly this reason, which is why anything importing
 this library must be launched from the repo root.
 
-## What the library patches for you
+## What the library patches
 
 `leamr_compat.installRuntimeShims()` runs automatically when the models load and
 fixes, in memory, upstream defects that would otherwise crash a *single-sentence*
@@ -56,38 +48,6 @@ run. Currently one:
 Shims cover crashes only. Nothing that changes *which* tokens get aligned is
 patched silently — a hidden behavioural difference between checkouts is precisely
 what makes results irreproducible.
-
-## Reproducing this project's numbers exactly
-
-The checkout this project developed against carries alignment-rule edits
-(`rule_based/subgraph_rules.py`), shipped here as `leamr_local.patch`:
-
-    cd /path/to/leamr && git apply /path/to/align2anchor/leamr_local.patch
-
-**Apply it if copular frames matter to you — they probably do.** The patch adds
-explicit rules anchoring `be-located-at-91` and `be-from-91` to the **copula**;
-stock LEAMR anchors them to the locative **preposition or adverb**. Measured
-across every sentence in FraCaS, PUD and Little Prince containing such a frame:
-
-| | stock | patched |
-|---|---|---|
-| fracas-076.premise_0 | `from` | `are` |
-| fracas-089.premise_0 | `at` | `was` |
-| lpp_1943.4 "Here is a copy…" | `Here` | `is` |
-| lpp_1943.92 "…is inside" | `inside` | `is` |
-| w02008055 | `on` | `were` |
-
-**9 of 19 frames differ**; both checkouts anchor all 19, just to different
-tokens. By contrast, 25/25 sentences *without* such a frame were identical, so
-generic text is unaffected.
-
-This matters beyond bit-exactness: the project's tense-placement analysis rests
-on reified copular frames being anchored to the copula (a frame with no content
-word of its own takes the copula as its exponent). On a stock checkout that
-premise does not hold, and `temp` behaviour will differ accordingly. `doctor`
-reports the patch's absence as a warning, not an error — the aligner runs fine
-without it, it simply makes different choices exactly where this project cares
-most.
 
 ## Verified
 
