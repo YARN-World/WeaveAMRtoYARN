@@ -297,6 +297,65 @@ def runConvert(args) -> int:
     return 1 if report.failures else 0
 
 
+def runBatch(args) -> int:
+    """Convert every corpus a config file names."""
+    from types import SimpleNamespace
+
+    from .batch import loadPlan
+
+    plan = loadPlan(_mustExist(Path(args.config), "config file"))
+    root = Path(args.out_root) if args.out_root else plan.outRoot
+    specs = plan.select(args.only)
+
+    print(f"{plan.source}: {len(specs)} corpus/corpora -> {root}", file=sys.stderr)
+
+    failures = 0
+    for position, spec in enumerate(specs, 1):
+        outDir = spec.outputDir(root)
+        print(f"\n[{position}/{len(specs)}] {spec.name} -> {outDir}", file=sys.stderr)
+
+        # A spec carries the same settings the flags do, so it is turned into
+        # the shape _buildConverter already understands rather than growing a
+        # second way to assemble a converter.
+        namespace = SimpleNamespace(
+            amr=spec.amr,
+            ud=spec.ud,
+            anchors=spec.anchors,
+            anchorer=spec.anchorer,
+            grs=spec.grs,
+            strat=spec.strat,
+            key_snt=spec.keySnt,
+            lang=spec.lang,
+            timeout=spec.timeout,
+            anchor_threshold=spec.anchorThreshold,
+            penman_dereify=spec.penmanDereify,
+            strict_ud=spec.strictUd,
+            stages=spec.stages,
+            leamr_dir=spec.leamrDir,
+            span_resolution=spec.spanResolution,
+        )
+
+        try:
+            corpus = AmrCorpus.fromFile(_mustExist(Path(spec.amr), "AMR corpus"))
+            converter, notes = _buildConverter(namespace)
+            for note in notes:
+                print(f"  {note}", file=sys.stderr)
+            report = BatchConverter(converter).run(
+                corpus, outDir, layout=spec.layout, grewOnly=spec.grewOnly
+            )
+            print(f"  {report.summary()}", file=sys.stderr)
+            for sentenceId, message in report.failures:
+                print(f"    failed  {sentenceId}: {message}", file=sys.stderr)
+            failures += report.failed
+        except (WeaveError, SystemExit) as exc:
+            # One bad corpus should not abandon the rest of the sweep.
+            print(f"  ERROR: {exc}", file=sys.stderr)
+            failures += 1
+
+    print(f"\ndone, {failures} failure(s)", file=sys.stderr)
+    return 1 if failures else 0
+
+
 def runDoctor(args) -> int:
     from .doctor import report
 
@@ -374,6 +433,18 @@ def buildParser() -> argparse.ArgumentParser:
     anchors.add_argument("--audit", help="write the filter's decisions to this TSV")
     _addAlign2AnchorOptions(anchors)
     anchors.set_defaults(handler=runAnchors)
+
+    batch = commands.add_parser(
+        "batch", help="convert every corpus named in a config file"
+    )
+    batch.add_argument("--config", required=True, help="TOML config file")
+    batch.add_argument(
+        "--only", nargs="+", metavar="NAME", help="run only these corpora"
+    )
+    batch.add_argument(
+        "--out-root", help="write under here instead of the config's out_root"
+    )
+    batch.set_defaults(handler=runBatch)
 
     doctor = commands.add_parser("doctor", help="check the environment")
     doctor.add_argument("--lang", default="en")
