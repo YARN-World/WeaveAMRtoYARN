@@ -1,10 +1,10 @@
-"""Creating S nodes (situations) for anchored predicates."""
+"""Creating S nodes (event nodes) for anchored predicates."""
 
 from __future__ import annotations
 
 # Incoming UD relations that mark a VERB/AUX as attributive rather than
 # predicative. A participial modifier ("the leading tenors") heads no
-# predication of its own, so it gets no situation.
+# predication of its own, so it gets no event node.
 ATTRIBUTIVE_RELATIONS = frozenset({"amod"})
 
 

@@ -24,10 +24,10 @@ def _naturalKey(value) -> tuple:
 def renameSNodes(data: dict) -> dict:
     """Number every S node S1..Sn by the natural order of its ``core``.
 
-    ``core`` is the AMR node the situation was made for, stamped by every
+    ``core`` is the AMR node the event node was made for, stamped by every
     creator — ``splitEvents`` and the GRS rules alike. Ordering by it rather
-    than by engine id is what makes the numbering reproducible. Situations with
-    no core (implicit reference situations, placeholders) sort last, tie-broken
+    than by engine id is what makes the numbering reproducible. event nodes with
+    no core (implicit reference event nodes, placeholders) sort last, tie-broken
     by node id.
     """
     sIds = [

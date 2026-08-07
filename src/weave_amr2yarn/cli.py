@@ -27,6 +27,25 @@ def _mustExist(path: Path, what: str) -> Path:
     return path
 
 
+def _addAlign2AnchorOptions(parser: argparse.ArgumentParser) -> None:
+    """Options shared by the commands that can reach align2anchor."""
+    parser.add_argument(
+        "--stages",
+        default="filter,repair",
+        help="align2anchor stages to apply, comma separated (default: filter,repair)",
+    )
+    parser.add_argument(
+        "--leamr-dir",
+        help="LEAMR checkout; too large to bundle, so it has to be found",
+    )
+    parser.add_argument(
+        "--span-resolution",
+        choices=("first", "head", "head-common"),
+        default="first",
+        help="how a multi-token span collapses to one token (default: first)",
+    )
+
+
 def _buildConverter(args) -> tuple[Converter, list[str]]:
     """Assemble the converter, plus notes describing what it will use."""
     config = ConversionConfig(
@@ -51,7 +70,29 @@ def _buildConverter(args) -> tuple[Converter, list[str]]:
         notes.append(f"ud      Stanza ({args.lang})")
 
     computed = LevenshteinAnchorer(threshold=args.anchor_threshold)
-    if args.anchors:
+
+    if getattr(args, "anchorer", "levenshtein") == "leamr":
+        if not args.ud:
+            raise SystemExit(
+                "weave: --anchorer leamr needs --ud: LEAMR is aligned against the "
+                "UD tokenisation"
+            )
+        from .providers.align2anchor import Align2AnchorAnchorer
+
+        leamr = Align2AnchorAnchorer(
+            args.amr,
+            args.ud,
+            leamrDir=args.leamr_dir,
+            spanResolution=args.span_resolution,
+            stages=tuple(s for s in args.stages.split(",") if s),
+        )
+        anchors = ChainedAnchorer(leamr, computed)
+        notes.append(
+            f"anchors LEAMR via align2anchor "
+            f"[{args.stages or 'no stages'}, spans={args.span_resolution}], "
+            "Levenshtein for the rest"
+        )
+    elif args.anchors:
         precomputed = PrecomputedAnchorer.fromFile(
             _mustExist(Path(args.anchors), "anchor dictionary")
         )
@@ -65,6 +106,39 @@ def _buildConverter(args) -> tuple[Converter, list[str]]:
         notes.append(f"anchors Levenshtein (threshold {args.anchor_threshold})")
 
     return Converter(config, ud=ud, anchors=anchors), notes
+
+
+def runAnchors(args) -> int:
+    """Produce an anchor dictionary without converting anything."""
+    from .providers.align2anchor import Align2AnchorAnchorer
+
+    anchorer = Align2AnchorAnchorer(
+        _mustExist(Path(args.amr), "AMR corpus"),
+        _mustExist(Path(args.ud), "CoNLL-U file"),
+        source=args.source,
+        rawPath=args.raw,
+        stages=tuple(s for s in args.stages.split(",") if s),
+        leamrDir=args.leamr_dir,
+        spanResolution=args.span_resolution,
+    )
+    print(
+        f"anchoring with {args.source}"
+        f" [{args.stages or 'no stages'}, spans={args.span_resolution}]",
+        file=sys.stderr,
+    )
+    anchors = anchorer.build()
+    anchors.toFile(args.out)
+    print(
+        f"{len(anchors)} sentences, {anchors.anchorCount()} anchors -> {args.out}",
+        file=sys.stderr,
+    )
+
+    if args.audit:
+        if anchorer.writeAudit(args.audit):
+            print(f"audit -> {args.audit}", file=sys.stderr)
+        else:
+            print("weave: no audit to write (filter stage did not run)", file=sys.stderr)
+    return 0
 
 
 def runConvert(args) -> int:
@@ -188,7 +262,31 @@ def buildParser() -> argparse.ArgumentParser:
         action="store_true",
         help="apply the Penman-level -91 dereification before rewriting",
     )
+    convert.add_argument(
+        "--anchorer",
+        choices=("levenshtein", "leamr"),
+        default="levenshtein",
+        help="how to anchor sentences --anchors does not cover (default: levenshtein)",
+    )
+    _addAlign2AnchorOptions(convert)
     convert.set_defaults(handler=runConvert)
+
+    anchors = commands.add_parser(
+        "anchors", help="produce an anchor dictionary with align2anchor"
+    )
+    anchors.add_argument("--amr", required=True, help="AMR corpus in Penman format")
+    anchors.add_argument("--ud", required=True, help="CoNLL-U file")
+    anchors.add_argument("--out", required=True, help="anchor dictionary to write")
+    anchors.add_argument(
+        "--source",
+        choices=("leamr", "raw"),
+        default="leamr",
+        help="run the aligner, or read its output (default: leamr)",
+    )
+    anchors.add_argument("--raw", help="aligner output, required by --source raw")
+    anchors.add_argument("--audit", help="write the filter's decisions to this TSV")
+    _addAlign2AnchorOptions(anchors)
+    anchors.set_defaults(handler=runAnchors)
 
     doctor = commands.add_parser("doctor", help="check the environment")
     doctor.add_argument("--lang", default="en")
