@@ -71,6 +71,7 @@ class RunSpec:
     timeout: int = 30
     anchorThreshold: float = 0.7
     penmanDereify: bool = False
+    stampMetadata: bool = False
     strictUd: bool = False
     grewOnly: bool = False
     stages: str = "filter,repair"
@@ -89,6 +90,8 @@ _ALIASES = {
     "key_snt": "keySnt",
     "anchor_threshold": "anchorThreshold",
     "penman_dereify": "penmanDereify",
+    "stamp_meta": "stampMetadata",
+    "stamp_metadata": "stampMetadata",
     "strict_ud": "strictUd",
     "grew_only": "grewOnly",
     "leamr_dir": "leamrDir",

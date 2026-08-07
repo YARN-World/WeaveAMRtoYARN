@@ -9,6 +9,7 @@ from typing import Callable, Iterable
 
 from ..config import ConversionConfig
 from ..errors import GrewBackendError, WeaveError
+from ..manifest import timestamp
 from ..formats.amr import AmrCorpus, AmrSentence
 from ..formats.yarn import toYarn
 from ..graph import (
@@ -44,6 +45,7 @@ class Converter:
         self.session = GrsSession(self.config.grsPath, self.config.strategy)
         self.ud = ud if ud is not None else StanzaUd(sentenceKey=self.config.sentenceKey)
         self.anchors = anchors if anchors is not None else LevenshteinAnchorer()
+        self.lastAnchors: dict[str, str] = {}
 
     @staticmethod
     def _asSentence(source: str | AmrSentence) -> AmrSentence:
@@ -74,6 +76,10 @@ class Converter:
             )
 
         anchors = self.anchors.anchorsFor(sentence, amr, udGraph) or {}
+        # Kept so toGrew can record them; the rewritten graph turns anchors
+        # into edges that later rules consume, so they are not recoverable
+        # from the output.
+        self.lastAnchors = dict(anchors)
         return splitEvents(applyAnchoring(amr, udGraph, anchors))
 
     def toGrew(self, source: str | AmrSentence) -> dict:
@@ -81,7 +87,12 @@ class Converter:
         rewritten = self.session.apply(
             self.anchored(source), timeoutSeconds=self.config.timeoutSeconds
         )
-        return canonicalize(rewritten)
+        rewritten = canonicalize(rewritten)
+        if self.config.stampMetadata:
+            meta = rewritten.setdefault("meta", {})
+            meta["anchors"] = dict(sorted(self.lastAnchors.items()))
+            meta["converted_at"] = timestamp()
+        return rewritten
 
     def convert(self, source: str | AmrSentence) -> dict:
         """Rewrite, returning YARN JSON."""
@@ -95,6 +106,9 @@ class BatchReport:
     converted: int = 0
     failures: list[tuple[str, str]] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
+    startedAt: str | None = None
+    finishedAt: str | None = None
+    durationSeconds: float | None = None
 
     @property
     def failed(self) -> int:
@@ -106,6 +120,8 @@ class BatchReport:
             parts.append(f"{self.failed} failed")
         if self.skipped:
             parts.append(f"{len(self.skipped)} skipped")
+        if self.durationSeconds is not None:
+            parts.append(f"{self.durationSeconds:.1f}s")
         return ", ".join(parts)
 
 
@@ -136,9 +152,12 @@ class BatchConverter:
         grewOnly: bool = False,
         onProgress: Callable[[AmrSentence], None] | None = None,
     ) -> BatchReport:
+        import time
+
         outDir = Path(outDir)
         grewDir, yarnDir = outDir / "grew", outDir / "yarn"
-        report = BatchReport()
+        report = BatchReport(startedAt=timestamp())
+        began = time.perf_counter()
 
         for sentence in corpus:
             if onProgress:
@@ -162,6 +181,8 @@ class BatchConverter:
             except Exception as exc:
                 report.failures.append((sentence.id, f"{type(exc).__name__}: {exc}"))
 
+        report.finishedAt = timestamp()
+        report.durationSeconds = round(time.perf_counter() - began, 3)
         return report
 
     @staticmethod

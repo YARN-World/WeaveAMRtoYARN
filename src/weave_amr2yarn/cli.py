@@ -28,6 +28,80 @@ def _mustExist(path: Path, what: str) -> Path:
     return path
 
 
+def _progressReporter(total: int, quiet: bool = False):
+    """Print how far along a run is.
+
+    Rewrites one line on a terminal; on a pipe or in a log it prints a line at
+    each 10%, so a redirected run leaves a readable trace instead of thousands
+    of carriage returns.
+    """
+    if quiet or total == 0:
+        return None
+
+    interactive = sys.stderr.isatty()
+    step = max(1, total // 10)
+    seen = 0
+
+    def report(sentence) -> None:
+        nonlocal seen
+        seen += 1
+        if interactive:
+            print(
+                f"\r  {seen}/{total}  {sentence.id[:40]:<40}",
+                end="",
+                file=sys.stderr,
+                flush=True,
+            )
+            if seen == total:
+                print(file=sys.stderr)
+        elif seen % step == 0 or seen == total:
+            print(f"  {seen}/{total}", file=sys.stderr)
+
+    return report
+
+
+def _writeManifest(args, outDir, converter, corpus, report, notes) -> None:
+    """Record what this run was, beside its output."""
+    if getattr(args, "no_manifest", False):
+        return
+    from .manifest import RunManifest, ruleSetDigest
+
+    manifest = RunManifest(
+        weaveVersion=__version__,
+        startedAt=report.startedAt or "",
+        finishedAt=report.finishedAt,
+        durationSeconds=report.durationSeconds,
+        inputs={
+            "amr": str(getattr(args, "amr", None) or ""),
+            "ud": args.ud,
+            "anchors": args.anchors,
+            "text": getattr(args, "text", None),
+        },
+        rules={
+            "path": str(converter.config.grsPath),
+            "strategy": converter.config.strategy,
+            "sha256": ruleSetDigest(converter.config.grsPath),
+        },
+        providers={
+            "ud": type(converter.ud).__name__,
+            "anchors": type(converter.anchors).__name__,
+            "anchorer": getattr(args, "anchorer", "levenshtein"),
+            "notes": notes,
+        },
+        counts={
+            "sentences": len(corpus),
+            "converted": report.converted,
+            "failed": report.failed,
+        },
+        failures=[
+            {"id": sentenceId, "error": message}
+            for sentenceId, message in report.failures
+        ],
+    )
+    path = manifest.write(outDir)
+    print(f"manifest -> {path}", file=sys.stderr)
+
+
 def _addConversionOptions(parser: argparse.ArgumentParser) -> None:
     """Options shared by every command that ends in a conversion."""
     parser.add_argument("--out", required=True, help="output directory")
@@ -76,6 +150,16 @@ def _addConversionOptions(parser: argparse.ArgumentParser) -> None:
         default="levenshtein",
         help="how to anchor sentences --anchors does not cover (default: levenshtein)",
     )
+    parser.add_argument(
+        "--stamp-meta",
+        action="store_true",
+        help="record the anchors used and the conversion time in each graph's "
+        "metadata (changes the output)",
+    )
+    parser.add_argument("--quiet", action="store_true", help="no progress output")
+    parser.add_argument(
+        "--no-manifest", action="store_true", help="do not write manifest.json"
+    )
     _addAlign2AnchorOptions(parser)
 
 
@@ -106,6 +190,7 @@ def _buildConverter(args) -> tuple[Converter, list[str]]:
         sentenceKey=args.key_snt,
         timeoutSeconds=args.timeout,
         penmanDereify=args.penman_dereify,
+        stampMetadata=getattr(args, "stamp_meta", False),
     )
     notes = [f"rules   {config.grsPath}  [{config.strategy}]"]
 
@@ -243,11 +328,16 @@ def runRun(args) -> int:
 
     print(f"converting {len(corpus)} sentences -> {args.out}", file=sys.stderr)
     report = BatchConverter(converter).run(
-        corpus, args.out, layout=args.layout, grewOnly=args.grew_only
+        corpus,
+        args.out,
+        layout=args.layout,
+        grewOnly=args.grew_only,
+        onProgress=_progressReporter(len(corpus), args.quiet),
     )
     print(report.summary(), file=sys.stderr)
     for sentenceId, message in report.failures:
         print(f"  failed  {sentenceId}: {message}", file=sys.stderr)
+    _writeManifest(args, args.out, converter, corpus, report, notes)
     return 1 if report.failures else 0
 
 
@@ -288,12 +378,17 @@ def runConvert(args) -> int:
 
     print(f"converting {len(corpus)} sentences -> {args.out}", file=sys.stderr)
     report = BatchConverter(converter).run(
-        corpus, args.out, layout=args.layout, grewOnly=args.grew_only
+        corpus,
+        args.out,
+        layout=args.layout,
+        grewOnly=args.grew_only,
+        onProgress=_progressReporter(len(corpus), args.quiet),
     )
     print(report.summary(), file=sys.stderr)
     for sentenceId, message in report.failures:
         print(f"  failed  {sentenceId}: {message}", file=sys.stderr)
 
+    _writeManifest(args, args.out, converter, corpus, report, notes)
     return 1 if report.failures else 0
 
 
@@ -333,6 +428,7 @@ def runBatch(args) -> int:
             stages=spec.stages,
             leamr_dir=spec.leamrDir,
             span_resolution=spec.spanResolution,
+            stamp_meta=spec.stampMetadata,
         )
 
         try:
@@ -341,11 +437,19 @@ def runBatch(args) -> int:
             for note in notes:
                 print(f"  {note}", file=sys.stderr)
             report = BatchConverter(converter).run(
-                corpus, outDir, layout=spec.layout, grewOnly=spec.grewOnly
+                corpus,
+                outDir,
+                layout=spec.layout,
+                grewOnly=spec.grewOnly,
+                onProgress=_progressReporter(len(corpus), args.quiet),
             )
             print(f"  {report.summary()}", file=sys.stderr)
             for sentenceId, message in report.failures:
                 print(f"    failed  {sentenceId}: {message}", file=sys.stderr)
+            namespace.out = str(outDir)
+            namespace.quiet = args.quiet
+            namespace.no_manifest = args.no_manifest
+            _writeManifest(namespace, outDir, converter, corpus, report, notes)
             failures += report.failed
         except (WeaveError, SystemExit) as exc:
             # One bad corpus should not abandon the rest of the sweep.
