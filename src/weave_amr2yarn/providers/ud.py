@@ -90,6 +90,31 @@ class StanzaUd:
             return None
         return self.parse(text)
 
+    def parseToConllu(self, text: str, sentenceId: str) -> str:
+        """Parse *text* and return it as CoNLL-U.
+
+        Stanza writes this itself rather than us rebuilding it from the graph.
+        Its own output keeps what the graph does not carry — multiword ranges,
+        XPOS, the untouched ``# text`` line — and a serialiser of ours would
+        have to guess at all three. Since aligners index tokens by id, a wrong
+        guess corrupts anchors silently instead of failing.
+        """
+        import io
+
+        from stanza.utils.conll import CoNLL
+
+        buffer = io.StringIO()
+        CoNLL.write_doc2conll(self._ensurePipeline()(text), buffer)
+
+        # Stanza numbers sentences from zero; the id has to match the AMR's.
+        lines = [
+            f"# sent_id = {sentenceId}"
+            if line.startswith("# sent_id")
+            else line
+            for line in buffer.getvalue().splitlines()
+        ]
+        return "\n".join(lines) + "\n"
+
     def parse(self, text: str) -> dict:
         """Parse *text* into a GREW-shaped UD graph."""
         document = self._ensurePipeline()(text)

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>YARN App</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+
+<!-- ── top bar ── -->
+<div id="topbar">
+  <h1>WeaveAMRtoYARN</h1>
+  <div class="pipeline-btns">
+    <button class="run-btn grs"  onclick="runPipeline('grs')">▶ GRS</button>
+  </div>
+  <button class="spring-open-btn" onclick="SpringPanel.toggle()">SPRING ▾</button>
+  <span id="topbar-status"></span>
+</div>
+
+<!-- ── main ── -->
+<div id="main">
+
+  <!-- ── sidebar ── -->
+  <div id="sidebar">
+    <!-- ── corpus loader ── -->
+    <div class="corpus-box">
+      <label class="head">Corpus</label>
+      <div class="corpus-file-row">
+        <button class="corpus-file-btn" onclick="document.getElementById('corpus-file-input').click()">Load AMR file</button>
+        <button class="corpus-file-btn anchor" onclick="document.getElementById('anchor-file-input').click()">Load anchors</button>
+      </div>
+      <div class="corpus-file-row" style="margin-top:3px">
+        <button class="corpus-file-btn conllu" onclick="document.getElementById('conllu-corpus-input').click()">Load CoNLL-U</button>
+        <button class="corpus-file-btn conllu" id="clear-conllu-btn" style="display:none" onclick="clearCorpusConllu()">✕ Clear CoNLL-U</button>
+      </div>
+      <input type="file" id="corpus-file-input" accept=".txt,.amr" style="display:none" onchange="onCorpusFile(this)"/>
+      <input type="file" id="anchor-file-input" accept=".json" style="display:none" onchange="onAnchorFile(this)"/>
+      <input type="file" id="conllu-corpus-input" accept=".conllu,.txt" style="display:none" onchange="onConlluCorpusFile(this)"/>
+      <input id="corpus-search" type="text" placeholder="Filter sentences…" oninput="filterCorpus(this.value)" style="display:none"/>
+      <select id="corpus-select" size="6" style="display:none" onchange="selectSentence(this.value)"></select>
+      <div class="corpus-meta" id="corpus-meta"></div>
+      <div id="corpus-cur"></div>
+      <div id="corpus-run-row" style="margin-top:6px;display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+        <button class="corpus-file-btn" id="corpus-run-btn-grs"  onclick="runCorpus('grs')"    style="flex:1;background:#f5f3ff;border-color:#c4b5fd;color:#6d28d9">▶ GRS</button>
+        <button class="corpus-file-btn" id="corpus-browse-btn" onclick="CorpusBrowser.open(_lastCorpusPipeline)" style="display:none;flex:1;background:#fff7ed;border-color:#fdba74;color:#9a3412">Browse</button>
+        <button class="corpus-file-btn" id="corpus-dl-btn" onclick="downloadResults()" style="display:none;flex:1;background:#f0fdf4;border-color:#86efac;color:#166534">⬇ JSON</button>
+      </div>
+      <div id="corpus-progress" style="display:none;margin-top:4px">
+        <div style="font-size:10px;color:#475569;margin-bottom:2px" id="corpus-progress-label"></div>
+        <div style="background:#e2e8f0;border-radius:3px;height:6px;overflow:hidden">
+          <div id="corpus-progress-bar" style="background:#3b82f6;height:100%;width:0%;transition:width .2s"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label class="lbl">AMR (Penman + # ::snt)</label>
+      <textarea class="ta" id="amr-input" rows="12"
+        placeholder="# ::id fracas-001.premise_0&#10;# ::snt Every man walks.&#10;(w / walk-01&#10;   :ARG0 (m / man&#10;      :mod (e / every)))"
+        oninput="updateSntBar(this.value)"></textarea>
+       <!--<button class="mock-btn" style="margin-top:4px" onclick="springMock()">SPRING (mock)</button>-->
+    </div>
+
+    <div class="opt-box">
+      <label class="head">UD source</label>
+      <div class="radio-row">
+        <input type="radio" name="ud_src" id="ud_stanza" value="stanza" checked onchange="toggleSub('ud_sub', 'ud_manual')"/>
+        <label for="ud_stanza">Stanza</label>
+        <input type="radio" name="ud_src" id="ud_manual" value="manual" onchange="toggleSub('ud_sub', 'ud_manual')"/>
+        <label for="ud_manual">CoNLL-U</label>
+      </div>
+      <div class="sub" id="ud_sub">
+        <textarea class="ta" id="conllu-input" rows="7"
+          placeholder="1&#9;Every&#9;every&#9;DET&#9;DT&#9;_&#9;3&#9;det&#9;_&#9;_"></textarea>
+      </div>
+    </div>
+
+    <div class="opt-box">
+      <label class="head">Anchoring</label>
+      <div class="radio-row">
+        <input type="radio" name="anc_src" id="anc_lev" value="levenshtein" checked onchange="toggleAnc()"/>
+        <label for="anc_lev">Levenshtein</label>
+        <input type="radio" name="anc_src" id="anc_leamr" value="leamr" onchange="toggleAnc()"/>
+        <label for="anc_leamr">LEAMR</label>
+        <input type="radio" name="anc_src" id="anc_man" value="manual" onchange="toggleAnc()"/>
+        <label for="anc_man">Manual</label>
+      </div>
+      <div class="sub" id="leamr_sub">
+        <button class="leamr-btn" style="margin-top:4px" onclick="callLeamr()">Call LEAMR → fill manual</button>
+      </div>
+      <div class="sub" id="anc_sub">
+        <label class="lbl" style="margin-top:6px">Anchor JSON {var: token_id}</label>
+        <textarea class="ta" id="anchor-input" rows="4"
+          placeholder='{"m": "2", "e": "1"}'></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── right content ── -->
+  <div id="content">
+    <div id="snt-bar" style="display:none">
+      <span id="snt-bar-id"></span><span id="snt-bar-text"></span>
+    </div>
+    <div id="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('amr')"    id="tbtn-amr">AMR</button>
+      <button class="tab-btn"        onclick="switchTab('ud')"     id="tbtn-ud">UD</button>
+      <button class="tab-btn"        onclick="switchTab('anchor')" id="tbtn-anchor">Anchoring</button>
+      <button class="tab-btn"        onclick="switchTab('steps')"  id="tbtn-steps">Steps</button>
+      <button class="tab-btn"        onclick="switchTab('yarn')"   id="tbtn-yarn">YARN</button>
+    </div>
+
+    <div id="tab-content">
+
+      <!-- AMR tab -->
+      <div class="tab-panel active" id="tab-amr">
+        <div class="placeholder">Run the pipeline to see the AMR graph.</div>
+      </div>
+
+      <!-- UD tab -->
+      <div class="tab-panel" id="tab-ud">
+        <div class="placeholder">Run the pipeline to see the UD dependency tree.</div>
+      </div>
+
+      <!-- Anchoring tab -->
+      <div class="tab-panel" id="tab-anchor">
+        <div class="placeholder">Run the pipeline to see and edit anchoring.</div>
+      </div>
+
+      <!-- Steps tab -->
+      <div class="tab-panel" id="tab-steps">
+        <!-- filled dynamically; contains .sub-tabs + .sub-tab-content -->
+        <div class="placeholder">Run the pipeline to see step-by-step debug.</div>
+      </div>
+
+      <!-- YARN tab -->
+      <div class="tab-panel" id="tab-yarn">
+        <div class="placeholder">Run the pipeline to see the YARN output.</div>
+      </div>
+
+    </div>
+
+    <!-- ── corpus browser (replaces tab-content when active) ── -->
+    <div id="corpus-browser">
+      <div id="cb-header">
+        <span class="cb-title">Corpus browser</span>
+        <span class="cb-status" id="cb-status"></span>
+        <button class="cb-close-btn" onclick="CorpusBrowser.close()">✕ Back to run</button>
+      </div>
+      <div id="cb-tab-bar">
+        <button class="cb-tab-btn active" id="cbtbtn-amr"      onclick="CorpusBrowser.switchTab('amr')">AMR</button>
+        <button class="cb-tab-btn"        id="cbtbtn-ud"       onclick="CorpusBrowser.switchTab('ud')">UD</button>
+        <button class="cb-tab-btn"        id="cbtbtn-anchor"   onclick="CorpusBrowser.switchTab('anchor')">Anchoring</button>
+        <button class="cb-tab-btn"        id="cbtbtn-yarn-grs" onclick="CorpusBrowser.switchTab('yarn-grs')" disabled>YARN (GRS)</button>
+      </div>
+      <div id="cb-content">
+        <div class="cb-panel active" id="cbtab-amr">
+          <div class="placeholder">Select a sentence to view its AMR.</div>
+        </div>
+        <div class="cb-panel" id="cbtab-ud">
+          <div class="placeholder">Select a sentence to view its UD graph.</div>
+        </div>
+        <div class="cb-panel" id="cbtab-anchor">
+          <div class="placeholder">Select a sentence to view anchoring.</div>
+        </div>
+        <div class="cb-panel" id="cbtab-yarn-grs">
+          <div class="placeholder">Select a sentence to view YARN (GRS).</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── SPRING floating panel (independent of pipeline runs) ── -->
+<div id="spring-panel">
+  <div class="spring-hd">
+    <span class="spring-title">SPRING parser</span>
+    <span class="spring-status" id="spring-status"></span>
+    <button class="spring-close" onclick="SpringPanel.close()">✕</button>
+  </div>
+  <div class="spring-bd">
+    <textarea id="spring-input" class="spring-input"
+      placeholder="Enter one or more sentences (one per line).  Calls localhost:8080/parse."></textarea>
+    <button class="spring-parse-btn" id="spring-parse-btn"
+      onclick="SpringPanel.parse()">Parse with SPRING</button>
+    <div id="spring-result"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

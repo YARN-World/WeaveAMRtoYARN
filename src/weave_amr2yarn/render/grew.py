@@ -44,7 +44,17 @@ class GrewRenderer(BaseRenderer):
             binaryRequirement("dot", "brew install graphviz"),
         ]
 
-    def render(self, graph: dict, prefix: str = "grew") -> str:
+    def render(
+        self,
+        graph: dict,
+        prefix: str = "grew",
+        highlight: set[str] | None = None,
+    ) -> str:
+        """Draw the graph. *highlight* rings the given node ids.
+
+        Highlighting is done here rather than through grewpy's ``deco``
+        argument, which this backend ignores.
+        """
         self._ensureAvailable()
         from graphviz import Digraph
 
@@ -60,12 +70,25 @@ class GrewRenderer(BaseRenderer):
         self._drawTokens(dot, nodes, tokens)
         self._drawNodes(dot, nodes, tokens)
         self._drawEdges(dot, nodes, edges, tokens)
+        self._drawHighlights(dot, nodes, highlight or set())
 
         try:
             svg = dot.pipe(format="svg").decode("utf-8")
         except Exception as exc:
             raise RenderError(f"grew: {exc}") from exc
         return uniquifyIds(stripPrologue(svg), prefix)
+
+    @staticmethod
+    def _drawHighlights(dot, nodes: dict, highlight: set[str]) -> None:
+        """Re-declare matched nodes so their ring wins.
+
+        graphviz keeps the last attributes given for a node, so this overrides
+        the border without having to thread the highlight set through every
+        drawing branch.
+        """
+        for nodeId in highlight:
+            if nodeId in nodes:
+                dot.node(nodeId, color="#d92b2b", penwidth="3.0")
 
     @staticmethod
     def _drawTokens(dot, nodes: dict, tokens: set[str]) -> None:

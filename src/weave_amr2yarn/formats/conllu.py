@@ -47,6 +47,17 @@ def _parseFeats(field: str) -> dict[str, str]:
 
 def readConllu(path: str | Path) -> dict[str, dict]:
     """Return ``{sent_id: ud_graph}`` for every sentence in *path*."""
+    with open(path, encoding="utf-8") as handle:
+        return parseConllu(handle)
+
+
+def parseConlluText(text: str) -> dict[str, dict]:
+    """The same, for CoNLL-U already in memory — a paste box, say."""
+    return parseConllu(text.splitlines())
+
+
+def parseConllu(lines) -> dict[str, dict]:
+    """Return ``{sent_id: ud_graph}`` for any iterable of CoNLL-U lines."""
     graphs: dict[str, dict] = {}
     sentenceId: str | None = None
     nodes = _rootNode()
@@ -59,41 +70,40 @@ def readConllu(path: str | Path) -> dict[str, dict]:
             graphs[sentenceId] = {"nodes": nodes, "edges": edges}
         sentenceId = None
 
-    with open(path, encoding="utf-8") as handle:
-        for line in handle:
-            line = line.rstrip("\n")
+    for line in lines:
+        line = line.rstrip("\n")
 
-            if line.startswith("#"):
-                comment = line[1:].strip()
-                if comment.startswith("sent_id"):
-                    _, _, value = comment.partition("=")
-                    sentenceId = value.strip()
-                    nodes, edges = _rootNode(), []
-                continue
+        if line.startswith("#"):
+            comment = line[1:].strip()
+            if comment.startswith("sent_id"):
+                _, _, value = comment.partition("=")
+                sentenceId = value.strip()
+                nodes, edges = _rootNode(), []
+            continue
 
-            if not line:
-                flush()
-                continue
+        if not line:
+            flush()
+            continue
 
-            if sentenceId is None:
-                continue  # tokens before any sent_id: nothing to key them by
+        if sentenceId is None:
+            continue  # tokens before any sent_id: nothing to key them by
 
-            fields = line.split("\t")
-            # Multiword-token ranges ("1-2") and empty nodes ("1.1") are not
-            # graph nodes; their ID does not read as a plain integer.
-            if not fields[_ID].isdigit() or len(fields) < _MINIMUM_COLUMNS:
-                continue
+        fields = line.split("\t")
+        # Multiword-token ranges ("1-2") and empty nodes ("1.1") are not
+        # graph nodes; their ID does not read as a plain integer.
+        if not fields[_ID].isdigit() or len(fields) < _MINIMUM_COLUMNS:
+            continue
 
-            tokenId = fields[_ID]
-            nodes[tokenId] = {
-                "id": tokenId,
-                "form": fields[_FORM],
-                "lemma": fields[_LEMMA],
-                "upos": fields[_UPOS],
-                **_parseFeats(fields[_FEATS]),
-            }
-            edges.append(
-                {"src": fields[_HEAD], "label": fields[_DEPREL], "tar": tokenId}
+        tokenId = fields[_ID]
+        nodes[tokenId] = {
+            "id": tokenId,
+            "form": fields[_FORM],
+            "lemma": fields[_LEMMA],
+            "upos": fields[_UPOS],
+            **_parseFeats(fields[_FEATS]),
+        }
+        edges.append(
+            {"src": fields[_HEAD], "label": fields[_DEPREL], "tar": tokenId}
             )
 
     flush()  # a file that does not end in a blank line still has a sentence
