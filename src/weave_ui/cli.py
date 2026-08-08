@@ -26,6 +26,11 @@ def buildParser() -> argparse.ArgumentParser:
         default="http://localhost:8080/parse",
         help="SPRING service, used when no amrlib model is given",
     )
+    parser.add_argument(
+        "--editor-url",
+        default="https://yarn-editor.grew.fr",
+        help="where the YARN editor is served (default: the released one)",
+    )
     parser.add_argument("--debug", action="store_true", help="Flask debug mode")
     return parser
 
@@ -50,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
             strategy=args.strat,
             amrModel=args.amr_model,
             springEndpoint=args.spring_endpoint,
+            editorUrl=args.editor_url,
         )
     except WeaveError as exc:
         print(f"weave-ui: {exc}", file=sys.stderr)

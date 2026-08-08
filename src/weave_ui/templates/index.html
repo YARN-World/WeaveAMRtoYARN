@@ -5,13 +5,13 @@
 <title>YARN App</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
-<body>
+<body data-editor-url="{{ editorUrl }}">
 
 <!-- ── top bar ── -->
 <div id="topbar">
   <h1>WeaveAMRtoYARN</h1>
   <div class="pipeline-btns">
-    <button class="run-btn grs"  onclick="runPipeline('grs')">▶ GRS</button>
+    <button class="run-btn grs"  onclick="runPipeline()">▶ GRS</button>
   </div>
   <button class="spring-open-btn" onclick="SpringPanel.toggle()">SPRING ▾</button>
   <span id="topbar-status"></span>
@@ -41,9 +41,10 @@
       <div class="corpus-meta" id="corpus-meta"></div>
       <div id="corpus-cur"></div>
       <div id="corpus-run-row" style="margin-top:6px;display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-        <button class="corpus-file-btn" id="corpus-run-btn-grs"  onclick="runCorpus('grs')"    style="flex:1;background:#f5f3ff;border-color:#c4b5fd;color:#6d28d9">▶ GRS</button>
-        <button class="corpus-file-btn" id="corpus-browse-btn" onclick="CorpusBrowser.open(_lastCorpusPipeline)" style="display:none;flex:1;background:#fff7ed;border-color:#fdba74;color:#9a3412">Browse</button>
+        <button class="corpus-file-btn" id="corpus-run-btn-grs"  onclick="runCorpus()"    style="flex:1;background:#f5f3ff;border-color:#c4b5fd;color:#6d28d9">▶ GRS</button>
+        <button class="corpus-file-btn" id="corpus-browse-btn" onclick="CorpusBrowser.open()" style="display:none;flex:1;background:#fff7ed;border-color:#fdba74;color:#9a3412">Browse</button>
         <button class="corpus-file-btn" id="corpus-dl-btn" onclick="downloadResults()" style="display:none;flex:1;background:#f0fdf4;border-color:#86efac;color:#166534">⬇ JSON</button>
+        <button class="corpus-file-btn" id="corpus-zip-btn" onclick="exportSample()" style="display:none;flex:1;background:#eff6ff;border-color:#93c5fd;color:#1d4ed8" title="Download a sample the YARN editor can import">⬇ Sample</button>
       </div>
       <div id="corpus-progress" style="display:none;margin-top:4px">
         <div style="font-size:10px;color:#475569;margin-bottom:2px" id="corpus-progress-label"></div>
@@ -58,7 +59,6 @@
       <textarea class="ta" id="amr-input" rows="12"
         placeholder="# ::id fracas-001.premise_0&#10;# ::snt Every man walks.&#10;(w / walk-01&#10;   :ARG0 (m / man&#10;      :mod (e / every)))"
         oninput="updateSntBar(this.value)"></textarea>
-       <!--<button class="mock-btn" style="margin-top:4px" onclick="springMock()">SPRING (mock)</button>-->
     </div>
 
     <div class="opt-box">
@@ -187,6 +187,6 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

@@ -235,6 +235,9 @@ textarea.ta:focus { border-color: #3b82f6; outline: none; background: #fff; }
                 box-shadow: 0 1px 3px #0001; overflow-x: auto; display: inline-block; }
 
 /* ── YARN tab split ── */
+/* The row holding the YARN column(s). Gives .yarn-col and .yarn-json the
+   bounded height they need to scroll instead of growing off the panel. */
+.yarn-cols { display: flex; flex: 1; height: 100%; overflow: hidden; min-height: 0; }
 .yarn-col { flex: 1; overflow: auto; padding: 10px; min-width: 0;
             display: flex; flex-direction: column; min-height: 0; }
 .yarn-col h3 { font-size: 11px; text-transform: uppercase; color: #94a3b8;
@@ -319,3 +322,7 @@ textarea.ta:focus { border-color: #3b82f6; outline: none; background: #fff; }
 .rule-badge.err { background:#fde8c8; color:#7a4800; }
 .match-row      { cursor:pointer; }
 .match-row:hover{ background:#eef4fb; }
+
+/* Handing a graph to the YARN editor. */
+.editor-btn { margin-left:auto; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; }
+.editor-btn:hover { background:#dbeafe; }

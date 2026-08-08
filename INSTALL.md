@@ -10,17 +10,13 @@ fix each one.
 
 ## grewpy
 
-The rewriting is done by [grewpy](https://grew.fr/usage/python/). It needs more
-than `pip install` — the engine it drives is a separate program — so follow the
-official guide rather than installing it from here. `weave doctor` tells you
-whether it worked.
+The rewriting uses [grewpy](https://grew.fr/usage/python/). Install it by
+following its own guide.
 
-POSIX only; on Windows, use WSL.
+## Stanza
 
-## Stanza (optional)
-
-Only needed when UD is not supplied as CoNLL-U and has to be parsed from the
-sentence. It is an extra so the common case does not pull in torch:
+Stanza parses the UD analysis from the sentence. It is needed for any sentence
+you do not supply as CoNLL-U:
 
 ```bash
 pip install 'weave-amr2yarn[stanza]'

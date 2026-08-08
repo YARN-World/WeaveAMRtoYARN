@@ -460,6 +460,26 @@ def runBatch(args) -> int:
     return 1 if failures else 0
 
 
+def runExport(args) -> int:
+    """Package a directory of YARN graphs as a sample for the editor."""
+    from .formats.editor import readYarnDirectory, writeEditorZip
+
+    directory = _mustExist(Path(args.yarn), "YARN directory")
+    graphs = readYarnDirectory(directory)
+    if not graphs:
+        raise SystemExit(f"weave: no YARN JSON under {directory}")
+
+    name = args.name or directory.name
+    archive = writeEditorZip(
+        graphs, args.out, sampleName=name, asJsonl=args.jsonl
+    )
+    print(
+        f"{len(graphs)} graphs -> {archive}  (sample {name!r})",
+        file=sys.stderr,
+    )
+    return 0
+
+
 def runDoctor(args) -> int:
     from .doctor import report
 
@@ -549,6 +569,19 @@ def buildParser() -> argparse.ArgumentParser:
         "--out-root", help="write under here instead of the config's out_root"
     )
     batch.set_defaults(handler=runBatch)
+
+    export = commands.add_parser(
+        "export", help="package YARN graphs as a sample the editor can import"
+    )
+    export.add_argument("--yarn", required=True, help="directory of YARN JSON")
+    export.add_argument("--out", required=True, help="zip file to write")
+    export.add_argument("--name", help="sample name (default: the directory's)")
+    export.add_argument(
+        "--jsonl",
+        action="store_true",
+        help="one .jsonl instead of a file per graph; easier to move",
+    )
+    export.set_defaults(handler=runExport)
 
     doctor = commands.add_parser("doctor", help="check the environment")
     doctor.add_argument("--lang", default="en")

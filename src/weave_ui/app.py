@@ -11,7 +11,7 @@ from __future__ import annotations
 import html
 import traceback
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 
 from weave_amr2yarn import ConversionConfig, GrsSession, __version__
 from weave_amr2yarn.errors import WeaveError
@@ -45,6 +45,7 @@ def createApp(
     strategy: str = "eval",
     amrModel=None,
     springEndpoint: str = "http://localhost:8080/parse",
+    editorUrl: str = "http://localhost:8000",
 ) -> Flask:
     app = Flask(__name__)
 
@@ -66,6 +67,7 @@ def createApp(
             strategy=config.strategy,
             stepCount=len(steps),
             renderers=availability(),
+            editorUrl=editorUrl,
         )
 
     @app.get("/info")
@@ -76,7 +78,45 @@ def createApp(
             strategy=config.strategy,
             steps=steps,
             renderers=availability(),
+            editorUrl=editorUrl,
         )
+
+    @app.post("/export_zip")
+    def exportZip():
+        """Package the graphs the page holds as a sample the editor imports."""
+        import io
+        import tempfile
+        from pathlib import Path
+
+        from weave_amr2yarn.formats.editor import writeEditorZip
+
+        try:
+            data = request.get_json(force=True) or {}
+            graphs = data.get("graphs") or {}
+            graphs = {
+                sentenceId: yarn for sentenceId, yarn in graphs.items() if yarn
+            }
+            if not graphs:
+                return jsonify(error="No YARN graphs to export.")
+
+            name = data.get("name") or "weave-sample"
+            with tempfile.TemporaryDirectory() as scratch:
+                archive = writeEditorZip(
+                    graphs,
+                    Path(scratch) / f"{name}.zip",
+                    sampleName=name,
+                    asJsonl=bool(data.get("jsonl")),
+                )
+                payload = archive.read_bytes()
+
+            return send_file(
+                io.BytesIO(payload),
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=f"{name}.zip",
+            )
+        except Exception:
+            return jsonify(error=traceback.format_exc())
 
     @app.post("/run")
     def run():
