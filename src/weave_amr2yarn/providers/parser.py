@@ -121,8 +121,31 @@ class AmrlibParser:
         except Exception as exc:
             raise AmrParseError(
                 f"could not load the AMR model at {self.modelDir}: {exc}"
+                + self._offlineHint()
             ) from exc
         return self._inference
+
+    def _offlineHint(self) -> str:
+        """Explain the usual cause: the model has weights but no tokenizer.
+
+        Released amrlib models ship weights only, and their config names the
+        base model — ``facebook/bart-base`` — as the tokenizer. Loading it goes
+        to the Hugging Face Hub, so the parser needs the network the first time
+        and fails outright with no connection, even though nothing about
+        parsing requires one.
+        """
+        if any(self.modelDir.glob("tokenizer*")):
+            return ""
+        return (
+            f"\n\nThe model directory has no tokenizer, so amrlib fetches one "
+            f"from the Hugging Face Hub and cannot work offline. To make it "
+            f"self-contained, once, with a connection:\n"
+            f"  python -c \"from transformers import AutoTokenizer; \"\\\n"
+            f"    \"AutoTokenizer.from_pretrained('facebook/bart-base')\"\\\n"
+            f"    \".save_pretrained('{self.modelDir}')\"\n"
+            f"then add \"tok_name_or_path\": \"{self.modelDir}\" to the "
+            f"parse_amr section of its config.json."
+        )
 
     def parse(self, sentences: list[str]) -> list[str]:
         sentences = list(sentences)
