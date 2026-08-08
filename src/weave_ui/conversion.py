@@ -25,6 +25,19 @@ from weave_amr2yarn.providers.ud import StanzaUd
 
 _SENTENCE = re.compile(r"::snt\s+(.+)")
 
+#: One parser for the process. StanzaUd caches its pipeline per instance, so a
+#: fresh instance per request rebuilds the whole thing — 1.1s a sentence
+#: against 0.02s reused, which is most of the cost of converting a corpus.
+_parsers: dict[str, StanzaUd] = {}
+
+
+def stanzaFor(language: str = "en", sentenceKey: str = "snt") -> StanzaUd:
+    """The shared Stanza provider for *language*, built on first use."""
+    key = f"{language}:{sentenceKey}"
+    if key not in _parsers:
+        _parsers[key] = StanzaUd(language=language, sentenceKey=sentenceKey)
+    return _parsers[key]
+
 
 class InputError(WeaveError):
     """The request itself was wrong — reported to the user, not logged."""
@@ -81,7 +94,7 @@ def buildAnchored(
     # LEAMR needs the UD as CoNLL-U. When Stanza produced the parse, ask Stanza
     # for it rather than rebuilding it from the graph.
     if anchorSource == "leamr" and udSource != "manual":
-        conlluText = StanzaUd().parseToConllu(text, sentence.id)
+        conlluText = stanzaFor().parseToConllu(text, sentence.id)
 
     anchors = _resolveAnchors(
         sentence, amrGraph, udGraph, anchorSource, anchorJson, leamrDir, conlluText
@@ -107,7 +120,7 @@ def _resolveUd(
 
     if not text:
         raise InputError("No ::snt found — needed for parsing.")
-    return StanzaUd().parse(text)
+    return stanzaFor().parse(text)
 
 
 def _resolveAnchors(

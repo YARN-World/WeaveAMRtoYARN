@@ -90,6 +90,17 @@ def createApp(
                 anchorJson=data.get("anchor_json", ""),
             )
 
+            if data.get("batch"):
+                # A corpus run wants the YARN and nothing else: no pictures,
+                # and no step trace. Both are for looking at one sentence.
+                final = canonicalize(
+                    session.apply(anchored.graph, timeoutSeconds=config.timeoutSeconds)
+                )
+                yarn, error = _toYarn(final)
+                return jsonify(
+                    anchor_dict=anchored.anchors, yarn_grs=yarn, yarn_grs_error=error
+                )
+
             result = {
                 "snt": anchored.text,
                 "anchor_dict": anchored.anchors,
@@ -99,15 +110,6 @@ def createApp(
                 else '<p class="render-note">No AMR</p>',
                 "ud_svg": _draw("ud", anchored.udGraph, "ud"),
             }
-
-            if data.get("batch"):
-                final = canonicalize(
-                    session.apply(anchored.graph, timeoutSeconds=config.timeoutSeconds)
-                )
-                yarn, error = _toYarn(final)
-                return jsonify(
-                    anchor_dict=anchored.anchors, yarn_grs=yarn, yarn_grs_error=error
-                )
 
             trace = tracer.trace(
                 anchored.graph, withRules=bool(data.get("rules", True))
@@ -158,13 +160,20 @@ def createApp(
 
     @app.post("/yarn_svg")
     def yarnSvg():
-        """Redraw a YARN graph the page already holds, after an edit."""
+        """Draw a YARN graph the page already holds."""
         try:
             data = request.get_json(force=True) or {}
             graph = data.get("yarn")
             if not graph:
                 return jsonify(error="No YARN graph supplied.")
-            return jsonify(svg=_draw("yarn", graph, data.get("prefix", "yarn")))
+
+            # The caller names the graph so ids stay unique: several of these
+            # end up on one page, and SVG ids are document-global.
+            prefix = data.get("uid") or data.get("prefix") or "yarn"
+            svg = _draw("yarn", graph, prefix)
+            # svg_html is what the page reads; svg is the obvious name for
+            # anything else calling this.
+            return jsonify(svg_html=svg, svg=svg)
         except Exception:
             return jsonify(error=traceback.format_exc())
 
