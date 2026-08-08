@@ -40,7 +40,12 @@ def _draw(kind: str, graph, prefix: str, **options) -> str:
         return f'<p class="render-error">{html.escape(message)}</p>'
 
 
-def createApp(grsPath=None, strategy: str = "eval") -> Flask:
+def createApp(
+    grsPath=None,
+    strategy: str = "eval",
+    amrModel=None,
+    springEndpoint: str = "http://localhost:8080/parse",
+) -> Flask:
     app = Flask(__name__)
 
     config = ConversionConfig(grsPath=grsPath or bundledGrs(), strategy=strategy)
@@ -186,8 +191,8 @@ def createApp(grsPath=None, strategy: str = "eval") -> Flask:
             return jsonify(error=traceback.format_exc())
 
     @app.post("/spring_parse")
-    def springParse():
-        """Parse sentences into AMR, through whichever parser is configured."""
+    def parseText():
+        """Parse raw sentences into AMR, ready to paste into the editor."""
         try:
             data = request.get_json(force=True) or {}
             sentences = data.get("sentences") or (
@@ -197,26 +202,79 @@ def createApp(grsPath=None, strategy: str = "eval") -> Flask:
             if not sentences:
                 return jsonify(error="No sentence supplied.")
 
-            parser = _parserFrom(data)
-            graphs = parser.parse(sentences)
-            if len(graphs) == 1 and not data.get("sentences"):
-                return jsonify(amr=graphs[0])
-            return jsonify(amrs=graphs)
-        except WeaveError as exc:
-            return jsonify(error=str(exc))
+            try:
+                parser = _parserFrom(data, amrModel, springEndpoint)
+            except WeaveError as exc:
+                return jsonify(error=str(exc))
+
+            # One at a time so a sentence the parser chokes on is reported
+            # against itself instead of losing the whole batch. The model
+            # stays loaded, so this costs little.
+            results = []
+            for position, sentence in enumerate(sentences, 1):
+                entry = {"sent": sentence}
+                try:
+                    graph = parser.parse([sentence])[0]
+                    entry["amr"] = _withMetadata(graph, sentence, position)
+                except Exception as exc:
+                    entry["error"] = f"{type(exc).__name__}: {exc}"
+                results.append(entry)
+
+            payload = {"results": results, "parser": _parserName(parser)}
+            if len(results) == 1 and not data.get("sentences"):
+                payload["amr"] = results[0].get("amr")
+                payload["error"] = results[0].get("error")
+            return jsonify(payload)
         except Exception:
             return jsonify(error=traceback.format_exc())
 
     return app
 
 
-def _parserFrom(data: dict):
-    """The AMR parser the request asked for."""
-    from weave_amr2yarn.providers.parser import AmrlibParser, SpringParser
+def _withMetadata(graph: str, sentence: str, position: int) -> str:
+    """Give a parsed graph an id and its sentence.
 
-    if data.get("parser") == "amrlib" or data.get("amr_model"):
-        return AmrlibParser(data.get("amr_model"), device=data.get("device"))
-    return SpringParser(data.get("endpoint") or "http://localhost:8080/parse")
+    The editor reads ``::snt`` to parse UD, so a graph arriving without one
+    would convert but never anchor.
+    """
+    body = "\n".join(
+        line for line in graph.splitlines() if not line.startswith("#")
+    ).strip()
+    return f"# ::id snt{position}\n# ::snt {sentence}\n{body}"
+
+
+def _parserName(parser) -> str:
+    from weave_amr2yarn.providers.parser import AmrlibParser
+
+    if isinstance(parser, AmrlibParser):
+        return f"amrlib ({parser.modelDir.name})"
+    return f"SPRING service ({parser.endpoint})"
+
+
+def _parserFrom(data: dict, amrModel, springEndpoint: str):
+    """The parser to use: what the request asked for, else how we were started.
+
+    amrlib is preferred when a model is configured, since it runs in this
+    process; the SPRING service is the fallback and needs to be running.
+    """
+    import os
+
+    from weave_amr2yarn.providers.parser import (
+        MODEL_VARIABLE,
+        AmrlibParser,
+        SpringParser,
+    )
+
+    requested = data.get("parser")
+    # The environment is consulted here rather than left to AmrlibParser,
+    # which never gets constructed if this falls through to the service.
+    model = data.get("amr_model") or amrModel or os.environ.get(MODEL_VARIABLE)
+
+    if requested == "spring":
+        return SpringParser(data.get("endpoint") or springEndpoint)
+    if requested == "amrlib" or model:
+        return AmrlibParser(model, device=data.get("device"))
+    return SpringParser(data.get("endpoint") or springEndpoint)
 
 
 def _toYarn(grew: dict) -> tuple[dict | None, str | None]:

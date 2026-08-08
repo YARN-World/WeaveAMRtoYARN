@@ -16,6 +16,16 @@ def buildParser() -> argparse.ArgumentParser:
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--grs", help="GRS entry file (default: the bundled rules)")
     parser.add_argument("--strat", default="eval", help="strategy (default: eval)")
+    parser.add_argument(
+        "--amr-model",
+        help="amrlib model directory for parsing raw text, or set "
+        "WEAVE_AMR_MODEL. Without one, parsing goes to a SPRING service.",
+    )
+    parser.add_argument(
+        "--spring-endpoint",
+        default="http://localhost:8080/parse",
+        help="SPRING service, used when no amrlib model is given",
+    )
     parser.add_argument("--debug", action="store_true", help="Flask debug mode")
     return parser
 
@@ -35,7 +45,12 @@ def main(argv: list[str] | None = None) -> int:
     from weave_amr2yarn.errors import WeaveError
 
     try:
-        app = createApp(grsPath=args.grs, strategy=args.strat)
+        app = createApp(
+            grsPath=args.grs,
+            strategy=args.strat,
+            amrModel=args.amr_model,
+            springEndpoint=args.spring_endpoint,
+        )
     except WeaveError as exc:
         print(f"weave-ui: {exc}", file=sys.stderr)
         return 1
