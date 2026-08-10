@@ -12,6 +12,9 @@ export function renderAnchorIn(
 ) {
   const container = byId(containerId);
   if (!container || !anchorData) return;
+  // The editor manages its own scrolling in two panes, so the tab panel must
+  // not add padding or a scrollbar of its own around it.
+  container.classList.add('holds-anchor-editor');
 
   const merged = mergeAnchors(anchorData, edits);
 
@@ -53,14 +56,17 @@ export function renderAnchorIn(
     </div>`;
   }
 
+  // Classes carry the styling and ids only identify; the editor is rendered
+  // twice, once per namespace, so an id-based rule would either match nothing
+  // or match both.
   container.innerHTML = `
-<div id="anchor-editor">
-  <div id="anchor-var-panel-${namespace}">${variablesHtml}</div>
-  <div id="anchor-right-${namespace}">
-    <div style="font-size:1rem;font-style:italic;color:#334155;padding:6px 0 4px">${escH(anchorData.sentence || '')}</div>
-    <div style="font-size:10px;color:#94a3b8">Select a variable, then click a token to assign.</div>
-    <div id="token-grid-${namespace}">${tokensHtml}</div>
-    <button id="export-anc-btn-${namespace}" class="export-anc-btn" style="margin-top:6px">${escH(exportLabel)}</button>
+<div class="anchor-editor">
+  <div class="anchor-var-panel" id="anchor-var-panel-${namespace}">${variablesHtml}</div>
+  <div class="anchor-right" id="anchor-right-${namespace}">
+    <div class="anchor-snt">${escH(anchorData.sentence || '')}</div>
+    <div class="anchor-hint">Select a variable, then click a token to assign.</div>
+    <div class="token-grid" id="token-grid-${namespace}">${tokensHtml}</div>
+    <button id="export-anc-btn-${namespace}" class="export-anc-btn">${escH(exportLabel)}</button>
   </div>
 </div>`;
   byId(`export-anc-btn-${namespace}`).addEventListener('click', onExport);
