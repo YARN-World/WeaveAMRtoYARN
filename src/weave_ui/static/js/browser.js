@@ -5,7 +5,7 @@
 
 import { byId, escH, postJson } from './util.js';
 import { applyTokenClick, applyVarClick, renderAnchorIn } from './anchors.js';
-import { corpus, loadStoredAnchors, mergeAnchors, saveStoredAnchors } from './state.js';
+import { anchorsFor, corpus, mergeAnchors, saveAnchors } from './state.js';
 
 const INFO_TABS = ['amr', 'ud', 'anchor'];
 const LOADING = '<div class="cb-loading">…</div>';
@@ -88,7 +88,7 @@ export const CorpusBrowser = (() => {
 
     const sentence = corpus.sentences.find(s => s.id === id);
     if (!sentence) return;
-    const stored = loadStoredAnchors()[id];
+    const stored = anchorsFor(id);
     const conllu = corpus.conllu[id] || '';
 
     const fail = message => {
@@ -161,7 +161,7 @@ export const CorpusBrowser = (() => {
 
   function renderAnchor() {
     renderAnchorIn('cbtab-anchor', anchorData, anchorEdits, selectedVar, 'cb',
-      'Save anchors to storage', saveAnchors);
+      'Save anchors to storage', saveEditedAnchors);
   }
 
   function varClick(variable, event) {
@@ -174,11 +174,11 @@ export const CorpusBrowser = (() => {
     renderAnchor();
   }
 
-  function saveAnchors() {
+  // Named apart from the imported saveAnchors it calls; sharing the name
+  // would make this recurse into itself.
+  function saveEditedAnchors() {
     if (!curId || !anchorData) return;
-    const stored = loadStoredAnchors();
-    stored[curId] = mergeAnchors(anchorData, anchorEdits);
-    saveStoredAnchors(stored);
+    saveAnchors(curId, mergeAnchors(anchorData, anchorEdits), 'manual');
     // The cached view still holds the old anchors.
     delete infoCache[curId];
     setStatusLine('Anchors saved for ' + curId);

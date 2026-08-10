@@ -17,6 +17,10 @@ import {
 } from './corpus.js';
 import { CorpusBrowser } from './browser.js';
 import { ParsePanel } from './parse.js';
+import {
+  downloadAnchors, forgetAnchors, forgetEverything, renderStoragePanel,
+} from './storagePanel.js';
+import { migrateLegacyStore } from './state.js';
 import { setEditorUrl } from './editor.js';
 
 Object.assign(window, {
@@ -39,7 +43,13 @@ Object.assign(window, {
   ParsePanel, SpringPanel: ParsePanel,
   // named for the JSON it was written for, but it copies any <pre>
   copyYarnJson: copyText,
+  // what the browser is holding on to
+  downloadAnchors, forgetAnchors, forgetEverything,
 });
 
 setEditorUrl(document.body.dataset.editorUrl);
+// Anchors written before they were filed per corpus carry no corpus and no
+// provenance; move them across before anything reads them.
+migrateLegacyStore();
 restoreSession();
+renderStoragePanel();

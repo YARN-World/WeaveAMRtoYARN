@@ -3,8 +3,8 @@
 import { byId, escH, postJson } from './util.js';
 import { toggleAnc, updateSntBar } from './tabs.js';
 import {
-  corpus, loadStoredAnchors, restoreCorpus, restoreCurrentId,
-  saveCorpus, saveCurrentId, saveStoredAnchors,
+  CURATED, anchorEntry, anchorsFor, corpus, importAnchors, restoreCorpus,
+  restoreCurrent, saveAnchors, saveCorpus, saveCurrent, storedAnchors,
 } from './state.js';
 import { CorpusBrowser } from './browser.js';
 import { downloadSampleZip } from './editor.js';
@@ -51,10 +51,11 @@ function readFile(input, onText) {
 
 export function onCorpusFile(input) {
   readFile(input, (text, file) => {
-    corpus.sentences = parseAmrCorpus(text);
-    saveCorpus(corpus.sentences);
-    renderCorpusList(corpus.sentences);
-    setMeta(`${corpus.sentences.length} sentences loaded from ${file.name}`);
+    const sentences = parseAmrCorpus(text);
+    const saved = saveCorpus(file.name, sentences);
+    renderCorpusList(sentences);
+    setMeta(`${sentences.length} sentences loaded from ${file.name}`
+      + (saved ? '' : ' (too large to keep between reloads)'));
   });
 }
 
@@ -76,18 +77,25 @@ export function onAnchorFile(input) {
     const wholeCorpus = keys.length > 0
       && typeof data[keys[0]] === 'object' && data[keys[0]] !== null;
 
-    const stored = loadStoredAnchors();
-    if (wholeCorpus) {
-      Object.assign(stored, data);
-    } else if (corpus.curId) {
-      stored[corpus.curId] = data;
-    } else {
-      alert('Load a corpus and select a sentence first to attach single-sentence anchors.');
+    if (!corpus.id) {
+      alert('Load a corpus first — anchors are stored against the corpus they belong to.');
       return;
     }
-    saveStoredAnchors(stored);
-    setMeta('Anchor file loaded: ' + file.name);
-    if (corpus.curId && stored[corpus.curId]) applyStoredAnchors(corpus.curId);
+    let count;
+    if (wholeCorpus) {
+      count = importAnchors(data);
+      const known = new Set(corpus.sentences.map(s => s.id));
+      const strays = Object.keys(data).filter(id => !known.has(id)).length;
+      setMeta(`${count} anchored sentences from ${file.name}`
+        + (strays ? ` — ${strays} id(s) are not in this corpus` : ''));
+    } else if (corpus.curId) {
+      saveAnchors(corpus.curId, data, 'imported');
+      setMeta(`anchors for ${corpus.curId} from ${file.name}`);
+    } else {
+      alert('Select a sentence first to attach single-sentence anchors.');
+      return;
+    }
+    if (corpus.curId) applyStoredAnchors(corpus.curId);
   });
 }
 
@@ -143,7 +151,7 @@ export function renderCorpusList(sentences) {
   byId('corpus-search').style.display = shown;
   byId('corpus-run-row').style.display = sentences.length ? 'flex' : 'none';
 
-  const lastId = restoreCurrentId();
+  const lastId = restoreCurrent();
   if (lastId && sentences.some(s => s.id === lastId)) select.value = lastId;
 }
 
@@ -157,8 +165,7 @@ export function filterCorpus(query) {
 export function selectSentence(id) {
   const sentence = corpus.sentences.find(s => s.id === id);
   if (!sentence) return;
-  corpus.curId = id;
-  saveCurrentId(id);
+  saveCurrent(id);
   byId('amr-input').value = sentence.amr;
   byId('corpus-cur').textContent = id;
   applyStoredAnchors(id);
@@ -168,7 +175,10 @@ export function selectSentence(id) {
 
 /** Point the sidebar at whatever anchors this sentence already has. */
 export function applyStoredAnchors(id) {
-  const stored = loadStoredAnchors()[id];
+  const entry = anchorEntry(id);
+  // Only anchors a person stands behind are pre-filled. A computed one is
+  // left out so the run recomputes it rather than treating a guess as gold.
+  const stored = entry && CURATED.includes(entry.source) ? entry.anchors : null;
   if (stored && Object.keys(stored).length) {
     byId('anchor-input').value = JSON.stringify(stored, null, 2);
     byId('anc_man').checked = true;
@@ -187,7 +197,7 @@ export async function runCorpus() {
   if (!corpus.sentences.length) { alert('Load a corpus first.'); return; }
   if (corpus.running) return;
 
-  const storedAnchors = loadStoredAnchors();
+  const stored = storedAnchors();
   corpus.running = true;
   corpus.results = {};
 
@@ -207,15 +217,19 @@ export async function runCorpus() {
     label.textContent = `${index + 1} / ${total}  —  ${sentence.id}`;
     bar.style.width = ((index / total) * 100) + '%';
 
-    const stored = storedAnchors[sentence.id];
+    // Reuse only what a person edited or imported; a previously computed
+    // anchor is computed again, so changing the anchorer actually takes
+    // effect on a second run.
+    const entry = stored[sentence.id];
+    const curated = entry && CURATED.includes(entry.source) ? entry.anchors : null;
     const conllu = corpus.conllu[sentence.id] || '';
     try {
       const data = await postJson('/run', {
         amr: sentence.amr,
         ud_src: conllu ? 'manual' : 'stanza',
         conllu,
-        anc_src: stored ? 'manual' : 'levenshtein',
-        anchor_json: stored ? JSON.stringify(stored) : '',
+        anc_src: curated ? 'manual' : 'levenshtein',
+        anchor_json: curated ? JSON.stringify(curated) : '',
         batch: true,
       });
       if (data.error) {
@@ -227,12 +241,10 @@ export async function runCorpus() {
           yarn_grs_error: data.yarn_grs_error || null,
           anchor_dict: data.anchor_dict || {},
         };
-        // Keep computed anchors, so a second run does not recompute them and
-        // so they can be edited afterwards.
-        if (!stored && data.anchor_dict) {
-          const all = loadStoredAnchors();
-          all[sentence.id] = data.anchor_dict;
-          saveStoredAnchors(all);
+        // Recorded so they can be inspected and edited, but marked computed
+        // so nothing later mistakes them for curated anchors.
+        if (!curated && data.anchor_dict) {
+          saveAnchors(sentence.id, data.anchor_dict, 'computed');
         }
         converted++;
       }
@@ -276,17 +288,19 @@ export function downloadResults() {
 
 /** Bring back the corpus and selection from the last visit. */
 export function restoreSession() {
-  const sentences = restoreCorpus();
-  if (!sentences.length) return;
-  corpus.sentences = sentences;
+  const stored = restoreCorpus();
+  if (!stored) return;
+  const sentences = stored.sentences;
   renderCorpusList(sentences);
-  setMeta(`${sentences.length} sentences (from localStorage)`);
+  // The UD parse is not stored, so say so rather than silently parsing.
+  setMeta(`${stored.name}: ${sentences.length} sentences (restored)`
+    + ' — load its CoNLL-U again, or Stanza will parse');
 
-  const lastId = restoreCurrentId();
+  const lastId = restoreCurrent();
   if (!lastId) return;
   const sentence = sentences.find(s => s.id === lastId);
   if (!sentence) return;
-  corpus.curId = lastId;
+  saveCurrent(lastId);
   byId('amr-input').value = sentence.amr;
   byId('corpus-cur').textContent = lastId;
   applyStoredAnchors(lastId);

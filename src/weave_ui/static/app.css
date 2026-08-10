@@ -326,3 +326,28 @@ textarea.ta:focus { border-color: #3b82f6; outline: none; background: #fff; }
 /* Handing a graph to the YARN editor. */
 .editor-btn { margin-left:auto; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; }
 .editor-btn:hover { background:#dbeafe; }
+
+/* ── what the browser is holding on to ────────────────────────────────── */
+.store-box   { margin-top:8px; padding:5px 7px; border:1px solid #e2e8f0;
+               border-radius:6px; background:#fafafa; }
+.store-title { font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+               color:#94a3b8; cursor:pointer; list-style:none; user-select:none; }
+.store-title::-webkit-details-marker { display:none; }
+.store-title::before { content:'\25B8'; margin-right:4px; }
+details[open] > .store-title::before { content:'\25BE'; }
+details[open] > .store-title { margin-bottom:5px; }
+.store-row   { display:flex; justify-content:space-between; gap:8px;
+               font-size:11px; padding:2px 0; }
+.store-label { color:#64748b; }
+.store-value { color:#1e293b; text-align:right; }
+.store-weak  { color:#94a3b8; }
+.store-warn  { color:#b45309; }
+.store-empty { font-size:11px; color:#94a3b8; }
+.store-error { font-size:11px; color:#dc2626; margin-top:6px; }
+.store-actions { display:flex; gap:4px; margin-top:8px; }
+.store-btn   { flex:1; padding:3px 6px; font-size:10px; background:#fff;
+               border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;
+               color:#475569; }
+.store-btn:hover        { background:#f1f5f9; }
+.store-btn.danger       { color:#b91c1c; border-color:#fecaca; }
+.store-btn.danger:hover { background:#fef2f2; }

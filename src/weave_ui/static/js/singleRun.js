@@ -4,7 +4,7 @@ import { byId, escH, execScripts, markTab, postJson, setStatus, setTab } from '.
 import { switchTab, toggleAnc } from './tabs.js';
 import { applyTokenClick, applyVarClick, renderAnchorIn } from './anchors.js';
 import { openInEditor } from './editor.js';
-import { corpus, loadStoredAnchors, mergeAnchors, saveStoredAnchors } from './state.js';
+import { corpus, mergeAnchors, saveAnchors } from './state.js';
 
 // State for the Anchoring tab. The corpus browser keeps its own.
 let anchorData = null;
@@ -135,9 +135,7 @@ function exportAnchors() {
   alert('Anchor dict exported to Manual textarea. Click Run to use it.');
 
   if (!corpus.curId) return;
-  const stored = loadStoredAnchors();
-  stored[corpus.curId] = anchors;
-  saveStoredAnchors(stored);
+  saveAnchors(corpus.curId, anchors, 'manual');
   const label = byId('corpus-cur');
   label.textContent = corpus.curId + ' ✓ anchors saved';
   setTimeout(() => { label.textContent = corpus.curId; }, 2000);
