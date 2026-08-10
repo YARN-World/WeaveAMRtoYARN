@@ -568,6 +568,12 @@ def buildParser() -> argparse.ArgumentParser:
     batch.add_argument(
         "--out-root", help="write under here instead of the config's out_root"
     )
+    # runBatch passes both on to the progress reporter and the manifest, so
+    # they have to exist here as well as on the per-corpus commands.
+    batch.add_argument("--quiet", action="store_true", help="no progress output")
+    batch.add_argument(
+        "--no-manifest", action="store_true", help="do not write manifest.json"
+    )
     batch.set_defaults(handler=runBatch)
 
     export = commands.add_parser(
